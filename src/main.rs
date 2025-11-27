@@ -1,12 +1,12 @@
 use enigo::{Coordinate, Enigo, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::AxisChanged;
-
+use iced::widget::{button, row, text, Row};
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-fn main() {
+fn handle_controller_input() {
     let mut gilrs = Gilrs::new().unwrap();
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
@@ -45,4 +45,44 @@ fn main() {
             mouse_y_pos = mouse_y_pix as f32;
         }
     }
+}
+
+#[derive(Clone, Debug)]
+enum Message {
+    Increment,
+    Decrement,
+}
+
+#[derive(Default)]
+struct Counter {
+    value: i64,
+}
+
+impl Counter {
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::Increment => {
+                self.value += 1;
+            }
+            Message::Decrement => {
+                self.value -= 1;
+            }
+        }
+    }
+
+    fn view(&self) -> Row<Message> {
+        // The buttons
+        let increment = button("+").on_press(Message::Increment);
+        let decrement = button("-").on_press(Message::Decrement);
+
+        // The number
+        let counter = text(self.value);
+
+        // The layout
+        row![decrement, counter, increment]
+    }
+}
+
+fn main() {
+    iced::run("My App", Counter::update, Counter::view).unwrap();
 }
