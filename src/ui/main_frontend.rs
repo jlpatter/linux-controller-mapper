@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use iced::Task;
 use iced::widget::{button, row, text, Row};
 use crate::backend::controller_handler::handle_controller_input;
@@ -8,11 +9,18 @@ pub enum Message {
     Decrement,
     Activate,
     Activated(()),
+    Deactivate,
 }
 
-#[derive(Default)]
 pub struct Mapper {
     value: i64,
+    is_handler_running: Arc<Mutex<bool>>
+}
+
+impl Default for Mapper {
+    fn default() -> Self {
+        Self { value: 0, is_handler_running: Arc::new(Mutex::new(false)) }
+    }
 }
 
 impl Mapper {
@@ -27,10 +35,17 @@ impl Mapper {
                 Task::none()
             }
             Message::Activate => Task::perform(
-                handle_controller_input(),
+                {
+                    *self.is_handler_running.lock().unwrap() = true;
+                    handle_controller_input(self.is_handler_running.clone())
+                },
                 Message::Activated,
             ),
             Message::Activated(()) => Task::none(),
+            Message::Deactivate => {
+                *self.is_handler_running.lock().unwrap() = false;
+                Task::none()
+            },
         }
     }
 
@@ -43,9 +58,10 @@ impl Mapper {
         let counter = text(self.value);
 
         let activate = button("Activate").on_press(Message::Activate);
+        let deactivate = button("Deactivate").on_press(Message::Deactivate);
 
         // The layout
-        row![decrement, counter, increment, activate]
+        row![decrement, counter, increment, activate, deactivate]
 
     }
 }

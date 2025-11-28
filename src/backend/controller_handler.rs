@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use enigo::{Coordinate, Enigo, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::AxisChanged;
@@ -5,7 +6,7 @@ use gilrs::EventType::AxisChanged;
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-pub async fn handle_controller_input() {
+pub async fn handle_controller_input(is_handler_running: Arc<Mutex<bool>>) {
     let mut gilrs = Gilrs::new().unwrap();
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
@@ -20,7 +21,7 @@ pub async fn handle_controller_input() {
     let mut mouse_x_amt = 0.0;
     let mut mouse_y_amt = 0.0;
 
-    loop {
+    while *is_handler_running.lock().unwrap() == true {
         // Examine new events
         while let Some(Event { id, event, time, .. }) = gilrs.next_event() {
             println!("{:?} New event from {}: {:?}", time, id, event);
