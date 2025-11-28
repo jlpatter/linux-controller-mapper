@@ -35,7 +35,14 @@ impl Mapper {
         }
     }
 
-    pub fn view(&self) -> Column<Message> {
+    fn get_button_mapper<'b>(label: String) -> Column<'b, Message> {
+        column![
+            text(label),
+            button("InsertValueHere")
+        ].width(Length::Fill).align_x(Horizontal::Center)
+    }
+
+    pub fn view(&self) -> Column<'_, Message> {
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
 
@@ -43,15 +50,15 @@ impl Mapper {
             row![
                 column![
                     text("D-Pad"),
-                    Container::new(button("Up")).width(Length::Fill).align_x(Horizontal::Center),
+                    Mapper::get_button_mapper(String::from("Up")),
                     row![
-                        Container::new(button("Left")).width(Length::Fill),
-                        Container::new(button("Right")).width(Length::Fill).align_x(Horizontal::Right)
+                        Mapper::get_button_mapper(String::from("Left")),
+                        Mapper::get_button_mapper(String::from("Right")),
                     ],
-                    Container::new(button("Down")).width(Length::Fill).align_x(Horizontal::Center)
-                ].width(Length::FillPortion(1)).spacing(25),
-                column![].width(Length::FillPortion(1)),
-                column![].width(Length::FillPortion(1)),
+                    Mapper::get_button_mapper(String::from("Down")),
+                ].width(Length::Fill).spacing(25),
+                column![].width(Length::Fill),
+                column![].width(Length::Fill),
             ].width(Length::Fill).height(Length::Fill),
             row![].width(Length::Fill).height(Length::Fill),
             row![
