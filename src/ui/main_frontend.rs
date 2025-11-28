@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use iced::Task;
 use iced::widget::{button, row, text, Row};
 use crate::backend::controller_handler::handle_controller_input;
@@ -12,15 +13,10 @@ pub enum Message {
     Deactivate,
 }
 
+#[derive(Default)]
 pub struct Mapper {
     value: i64,
-    is_handler_running: Arc<Mutex<bool>>
-}
-
-impl Default for Mapper {
-    fn default() -> Self {
-        Self { value: 0, is_handler_running: Arc::new(Mutex::new(false)) }
-    }
+    is_handler_running: Arc<AtomicBool>
 }
 
 impl Mapper {
@@ -36,14 +32,14 @@ impl Mapper {
             }
             Message::Activate => Task::perform(
                 {
-                    *self.is_handler_running.lock().unwrap() = true;
+                    self.is_handler_running.store(true, Ordering::Relaxed);
                     handle_controller_input(self.is_handler_running.clone())
                 },
                 Message::Activated,
             ),
             Message::Activated(()) => Task::none(),
             Message::Deactivate => {
-                *self.is_handler_running.lock().unwrap() = false;
+                self.is_handler_running.store(false, Ordering::Relaxed);
                 Task::none()
             },
         }
