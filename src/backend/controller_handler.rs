@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use enigo::{Coordinate, Enigo, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::AxisChanged;
