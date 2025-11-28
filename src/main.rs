@@ -1,12 +1,13 @@
 use enigo::{Coordinate, Enigo, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::AxisChanged;
+use iced::Task;
 use iced::widget::{button, row, text, Row};
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-fn handle_controller_input() {
+async fn handle_controller_input() {
     let mut gilrs = Gilrs::new().unwrap();
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
@@ -51,6 +52,8 @@ fn handle_controller_input() {
 enum Message {
     Increment,
     Decrement,
+    Activate,
+    Activated(()),
 }
 
 #[derive(Default)]
@@ -59,14 +62,21 @@ struct Counter {
 }
 
 impl Counter {
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Increment => {
                 self.value += 1;
+                Task::none()
             }
             Message::Decrement => {
                 self.value -= 1;
+                Task::none()
             }
+            Message::Activate => Task::perform(
+                handle_controller_input(),
+                Message::Activated,
+            ),
+            Message::Activated(()) => Task::none(),
         }
     }
 
@@ -78,11 +88,14 @@ impl Counter {
         // The number
         let counter = text(self.value);
 
+        let activate = button("Activate").on_press(Message::Activate);
+
         // The layout
-        row![decrement, counter, increment]
+        row![decrement, counter, increment, activate]
+
     }
 }
 
 fn main() {
-    iced::run("My App", Counter::update, Counter::view).unwrap();
+    iced::run("Linux Controller Mapper", Counter::update, Counter::view).unwrap();
 }
