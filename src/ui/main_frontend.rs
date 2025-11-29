@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use iced::alignment::Horizontal;
-use iced::{window, Element, Length, Subscription, Task, Theme, Vector};
-use iced::widget::{button, column, row, text, Column, Container, Row};
+use iced::{window, Element, Length, Subscription, Task, Vector};
+use iced::widget::{button, column, row, text, Column, Container};
 use iced::window::{Id, Settings};
 use crate::backend::controller_handler::handle_controller_input;
 
@@ -13,21 +13,17 @@ pub enum Message {
     Activated(()),
     Deactivate,
     OpenWindow,
-    WindowOpened(window::Id),
-    WindowClosed(window::Id),
+    WindowOpened(Id),
+    WindowClosed(Id),
 }
 
-#[derive(Debug)]
-struct KeyPressWindow {
-    title: String,
-    scale_input: String,
-    current_scale: f64,
-    theme: Theme,
+trait Window {
+    fn view(&self, id: Id) -> Element<'_, Message>;
 }
 
 #[derive(Default)]
 pub struct Mapper {
-    other_windows: BTreeMap<window::Id, KeyPressWindow>,
+    windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>
 }
 
@@ -37,7 +33,7 @@ impl Mapper {
 
         (
             Self {
-                other_windows: BTreeMap::new(),
+                windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
             open.map(Message::WindowOpened),
@@ -62,7 +58,7 @@ impl Mapper {
                 // let (_, task) = window::open(Settings::default());
                 // task.map(Message::WindowOpened)
 
-                let Some(last_window) = self.other_windows.keys().last() else {
+                let Some(last_window) = self.windows.keys().last() else {
                     return Task::none();
                 };
 
@@ -87,15 +83,18 @@ impl Mapper {
                     .map(Message::WindowOpened)
             },
             Message::WindowOpened(id) => {
-                // TODO: This is how the view of a window is determined, fix it!
-                let window = KeyPressWindow::new(self.other_windows.len() + 1);
-                self.other_windows.insert(id, window);
+                if self.windows.is_empty() {
+                    self.windows.insert(id, Box::new(MainWindow{}));
+                } else {
+                    self.windows.insert(id, Box::new(KeyPressWindow{}));
+                }
+
                 Task::none()
             },
             Message::WindowClosed(id) => {
-                self.other_windows.remove(&id);
+                self.windows.remove(&id);
 
-                if self.other_windows.is_empty() {
+                if self.windows.is_empty() {
                     iced::exit()
                 } else {
                     Task::none()
@@ -104,61 +103,63 @@ impl Mapper {
         }
     }
 
+    pub fn subscription(&self) -> Subscription<Message> {
+        window::close_events().map(Message::WindowClosed)
+    }
+
+    pub fn view(&self, window_id: Id) -> Element<'_, Message> {
+        if let Some(window) = self.windows.get(&window_id) {
+            return window.view(window_id);
+        }
+        text("Error: window_id Not Found, could not load view!").into()
+    }
+}
+
+struct MainWindow;
+
+impl MainWindow {
     fn get_button_mapper<'b>(label: String) -> Column<'b, Message> {
         column![
             text(label),
             button("InsertValueHere")
         ].width(Length::Fill).align_x(Horizontal::Center)
     }
+}
 
-    pub fn subscription(&self) -> Subscription<Message> {
-        window::close_events().map(Message::WindowClosed)
-    }
+impl Window for MainWindow {
+    fn view(&self, window_id: Id) -> Element<'_, Message> {
+        let activate = button("Activate").on_press(Message::Activate);
+        let deactivate = button("Deactivate").on_press(Message::Deactivate);
+        let window_test = button("Open Window").on_press(Message::OpenWindow);
 
-    pub fn view(&self, window_id: window::Id) -> Element<'_, Message> {
-        if let Some(window) = self.other_windows.get(&window_id) {
-            window.view(window_id).into()
-        } else {
-            let activate = button("Activate").on_press(Message::Activate);
-            let deactivate = button("Deactivate").on_press(Message::Deactivate);
-            let window_test = button("Open Window").on_press(Message::OpenWindow);
-
-            column![
-                row![
-                    column![
-                        text("D-Pad"),
-                        Mapper::get_button_mapper(String::from("Up")),
-                        row![
-                            Mapper::get_button_mapper(String::from("Left")),
-                            Mapper::get_button_mapper(String::from("Right")),
-                        ],
-                        Mapper::get_button_mapper(String::from("Down")),
-                    ].width(Length::Fill).spacing(25),
-                    column![].width(Length::Fill),
-                    column![].width(Length::Fill),
-                ].width(Length::Fill).height(Length::Fill),
-                row![].width(Length::Fill).height(Length::Fill),
-                row![
-                    Container::new(window_test).width(Length::Fill).align_x(Horizontal::Right),
-                    Container::new(activate).width(Length::Fill).align_x(Horizontal::Right),
-                    Container::new(deactivate).align_x(Horizontal::Right),
-                ].spacing(10).width(Length::Fill).height(Length::Fill)
-            ].spacing(10).into()
-        }
+        column![
+            row![
+                column![
+                    text("D-Pad"),
+                    MainWindow::get_button_mapper(String::from("Up")),
+                    row![
+                        MainWindow::get_button_mapper(String::from("Left")),
+                        MainWindow::get_button_mapper(String::from("Right")),
+                    ],
+                    MainWindow::get_button_mapper(String::from("Down")),
+                ].width(Length::Fill).spacing(25),
+                column![].width(Length::Fill),
+                column![].width(Length::Fill),
+            ].width(Length::Fill).height(Length::Fill),
+            row![].width(Length::Fill).height(Length::Fill),
+            row![
+                Container::new(window_test).width(Length::Fill).align_x(Horizontal::Right),
+                Container::new(activate).width(Length::Fill).align_x(Horizontal::Right),
+                Container::new(deactivate).align_x(Horizontal::Right),
+            ].spacing(10).width(Length::Fill).height(Length::Fill)
+        ].spacing(10).into()
     }
 }
 
-impl KeyPressWindow {
-    fn new(count: usize) -> Self {
-        Self {
-            title: format!("Window_{count}"),
-            scale_input: "1.0".to_string(),
-            current_scale: 1.0,
-            theme: Theme::ALL[count % Theme::ALL.len()].clone(),
-        }
-    }
+struct KeyPressWindow;
 
-    fn view(&self, id: window::Id) -> Row<'_, Message> {
-        row![text("This is a new window!")]
+impl Window for KeyPressWindow {
+    fn view(&self, window_id: Id) -> Element<'_, Message> {
+        row![text("This is a new window!")].into()
     }
 }
