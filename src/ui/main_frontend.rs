@@ -1,8 +1,9 @@
+use crate::ui::key_press_frontend::KeyPressWindow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use iced::alignment::Horizontal;
-use iced::{window, Element, Length, Subscription, Task, Vector};
+use iced::{window, Element, Length, Size, Subscription, Task, Vector};
 use iced::widget::{button, column, row, text, Column, Container};
 use iced::window::{Id, Settings};
 use crate::backend::controller_handler::handle_controller_input;
@@ -17,7 +18,7 @@ pub enum Message {
     WindowClosed(Id),
 }
 
-trait Window {
+pub trait Window {
     fn view(&self, id: Id) -> Element<'_, Message>;
 }
 
@@ -55,9 +56,6 @@ impl Mapper {
                 Task::none()
             },
             Message::OpenWindow => {
-                // let (_, task) = window::open(Settings::default());
-                // task.map(Message::WindowOpened)
-
                 let Some(last_window) = self.windows.keys().last() else {
                     return Task::none();
                 };
@@ -75,6 +73,7 @@ impl Mapper {
 
                         let (_, open) = window::open(Settings {
                             position,
+                            max_size: Some(Size::new(400_f32, 200_f32)),
                             ..Settings::default()
                         });
 
@@ -127,7 +126,7 @@ impl MainWindow {
 }
 
 impl Window for MainWindow {
-    fn view(&self, window_id: Id) -> Element<'_, Message> {
+    fn view(&self, _window_id: Id) -> Element<'_, Message> {
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
         let window_test = button("Open Window").on_press(Message::OpenWindow);
@@ -153,13 +152,5 @@ impl Window for MainWindow {
                 Container::new(deactivate).align_x(Horizontal::Right),
             ].spacing(10).width(Length::Fill).height(Length::Fill)
         ].spacing(10).into()
-    }
-}
-
-struct KeyPressWindow;
-
-impl Window for KeyPressWindow {
-    fn view(&self, window_id: Id) -> Element<'_, Message> {
-        row![text("This is a new window!")].into()
     }
 }
