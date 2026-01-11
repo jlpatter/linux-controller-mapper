@@ -1,13 +1,14 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use enigo::{Coordinate, Enigo, Mouse, Settings};
+use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
-use gilrs::EventType::AxisChanged;
+use gilrs::EventType::{AxisChanged, ButtonPressed, ButtonReleased};
+use crate::backend::config_manager::ActiveProfileConfig;
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-pub async fn handle_controller_input(is_handler_running: Arc<AtomicBool>) {
+pub async fn handle_controller_input(active_profile_config: Arc<Mutex<ActiveProfileConfig>>, is_handler_running: Arc<AtomicBool>) {
     let mut gilrs = Gilrs::new().unwrap();
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
@@ -23,11 +24,21 @@ pub async fn handle_controller_input(is_handler_running: Arc<AtomicBool>) {
     let mut mouse_y_amt = 0.0;
 
     while is_handler_running.load(Ordering::Relaxed) == true {
+        let apc = active_profile_config.lock().unwrap();
+
         // Examine new events
         while let Some(Event { id, event, time, .. }) = gilrs.next_event() {
             println!("{:?} New event from {}: {:?}", time, id, event);
 
-            if let AxisChanged(axis, amt, _) = event {
+            if let ButtonPressed(btn, _) = event {
+                if let Some(key) = apc.get_key(&id, &btn) {
+                    enigo.key(*key, Direction::Press).unwrap();
+                }
+            } else if let ButtonReleased(btn, _) = event {
+                if let Some(key) = apc.get_key(&id, &btn) {
+                    enigo.key(*key, Direction::Release).unwrap();
+                }
+            } else if let AxisChanged(axis, amt, _) = event {
                 if axis == Axis::LeftStickX {
                     mouse_x_amt = if amt.abs() > DEADZONE {amt * MOUSE_SPEED_MODIFIER} else {0.0};
                 } else if axis == Axis::LeftStickY {

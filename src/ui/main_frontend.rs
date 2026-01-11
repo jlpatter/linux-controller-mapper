@@ -1,11 +1,12 @@
 use crate::ui::key_press_frontend::KeyPressWindow;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use iced::alignment::Horizontal;
 use iced::{window, Element, Length, Size, Subscription, Task, Vector};
 use iced::widget::{button, column, row, text, Column, Container};
 use iced::window::{Id, Settings};
+use crate::backend::config_manager::{ActiveProfileConfig};
 use crate::backend::controller_handler::handle_controller_input;
 
 #[derive(Clone, Debug)]
@@ -22,8 +23,8 @@ pub trait Window {
     fn view(&self, id: Id) -> Element<'_, Message>;
 }
 
-#[derive(Default)]
 pub struct Mapper {
+    active_profile_config: Arc<Mutex<ActiveProfileConfig>>,
     windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>
 }
@@ -34,6 +35,8 @@ impl Mapper {
 
         (
             Self {
+                // TODO: Figure out if there's a better way to handle this error on startup!
+                active_profile_config: Arc::new(Mutex::new(ActiveProfileConfig::new().unwrap())),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
@@ -46,7 +49,7 @@ impl Mapper {
             Message::Activate => Task::perform(
                 {
                     self.is_handler_running.store(true, Ordering::Relaxed);
-                    handle_controller_input(self.is_handler_running.clone())
+                    handle_controller_input(self.active_profile_config.clone(), self.is_handler_running.clone())
                 },
                 Message::Activated,
             ),
