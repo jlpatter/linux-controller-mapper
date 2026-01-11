@@ -7,6 +7,6 @@ pub struct KeyPressWindow;
 
 impl Window for KeyPressWindow {
     fn view(&self, _window_id: Id) -> Element<'_, Message> {
-        row![text("This is a new window!")].into()
+        row![text("Please press a key to assign it.")].into()
     }
 }

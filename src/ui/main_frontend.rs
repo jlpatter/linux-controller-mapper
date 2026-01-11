@@ -2,9 +2,9 @@ use crate::ui::key_press_frontend::KeyPressWindow;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use gilrs::{GamepadId, Gilrs};
+use gilrs::{Button, GamepadId, Gilrs};
 use iced::alignment::Horizontal;
-use iced::{window, Element, Length, Size, Subscription, Task, Vector};
+use iced::{keyboard, window, Element, Event, Length, Size, Subscription, Task, Vector};
 use iced::widget::{button, column, row, text, Column, Container};
 use iced::window::{Id, Settings};
 use uuid::Uuid;
@@ -19,6 +19,7 @@ pub enum Message {
     OpenWindow,
     WindowOpened(Id),
     WindowClosed(Id),
+    KeyPressed(keyboard::Key),
 }
 
 pub trait Window {
@@ -29,7 +30,7 @@ pub struct Mapper {
     gilrs: Arc<Mutex<Gilrs>>,
     profile_config: ProfileConfig,
     windows: BTreeMap<Id, Box<dyn Window>>,
-    is_handler_running: Arc<AtomicBool>
+    is_handler_running: Arc<AtomicBool>,
 }
 
 impl Mapper {
@@ -64,6 +65,11 @@ impl Mapper {
         }
 
         gamepad_config_map
+    }
+
+    fn is_key_press_window_open(&self) -> bool {
+        // I wonder if there'd be a less-hacky way to do this...
+        self.windows.len() > 1
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -123,12 +129,36 @@ impl Mapper {
                 } else {
                     Task::none()
                 }
+            },
+            Message::KeyPressed(key) => {
+                if key != keyboard::Key::Unidentified {
+                    println!("The following key was pressed!: {:?}", key);
+                    // TODO: Use whatever button on the frontend was pressed to know which gamepad button to use here!
+                    self.profile_config.insert_key_to_all(Button::South, key);
+                    return window::close(*self.windows.keys().last().unwrap());
+                }
+                Task::none()
             }
         }
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        window::close_events().map(Message::WindowClosed)
+        let mut subs = vec![window::close_events().map(Message::WindowClosed)];
+
+        if self.is_key_press_window_open() {
+            subs.push(
+                iced::event::listen().map(|event| {
+                    if let Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) = event {
+                        Message::KeyPressed(key)
+                    } else {
+                        // Ignore other events
+                        Message::KeyPressed(keyboard::Key::Unidentified)
+                    }
+                })
+            )
+        }
+
+        Subscription::batch(subs)
     }
 
     pub fn view(&self, window_id: Id) -> Element<'_, Message> {
