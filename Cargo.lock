@@ -927,6 +927,7 @@ dependencies = [
  "objc2 0.6.3",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "serde",
  "windows 0.61.3",
  "x11rb",
  "xkbcommon",
@@ -1273,6 +1274,7 @@ dependencies = [
  "fnv",
  "gilrs-core",
  "log",
+ "serde",
  "uuid",
  "vec_map",
 ]
@@ -1291,6 +1293,7 @@ dependencies = [
  "libudev-sys",
  "log",
  "nix 0.30.1",
+ "serde",
  "uuid",
  "vec_map",
  "wasm-bindgen",
@@ -3448,6 +3451,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
 dependencies = [
  "js-sys",
+ "serde_core",
  "wasm-bindgen",
 ]
 
