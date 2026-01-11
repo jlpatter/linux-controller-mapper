@@ -3,9 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use gilrs::{Button, GamepadId, Gilrs};
-use iced::alignment::Horizontal;
 use iced::{keyboard, window, Element, Event, Length, Size, Subscription, Task, Vector};
-use iced::widget::{button, column, row, text, Column, Container};
+use iced::widget::{button, column, row, text, Row};
 use iced::window::{Id, Settings};
 use uuid::Uuid;
 use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
@@ -16,7 +15,7 @@ pub enum Message {
     Activate,
     Activated(()),
     Deactivate,
-    OpenWindow,
+    OpenWindow(Button),
     WindowOpened(Id),
     WindowClosed(Id),
     KeyPressed(keyboard::Key),
@@ -28,6 +27,7 @@ pub trait Window {
 
 pub struct Mapper {
     gilrs: Arc<Mutex<Gilrs>>,
+    current_btn_to_bind: Option<Button>,
     profile_config: ProfileConfig,
     windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>,
@@ -36,14 +36,12 @@ pub struct Mapper {
 impl Mapper {
     pub fn new() -> (Self, Task<Message>) {
         let (_, open) = window::open(Settings::default());
-
-        // TODO: Figure out if there's a better way to handle these errors on startup!
         let gilrs = Arc::new(Mutex::new(Gilrs::new().unwrap()));
 
         (
             Self {
                 gilrs: gilrs.clone(),
-                // TODO: Figure out if there's a better way to handle these errors on startup!
+                current_btn_to_bind: None,
                 profile_config: ProfileConfig::load(gilrs.clone()).unwrap(),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
@@ -86,10 +84,12 @@ impl Mapper {
                 self.is_handler_running.store(false, Ordering::Relaxed);
                 Task::none()
             },
-            Message::OpenWindow => {
+            Message::OpenWindow(btn) => {
                 let Some(last_window) = self.windows.keys().last() else {
                     return Task::none();
                 };
+
+                self.current_btn_to_bind = Some(btn);
 
                 window::get_position(*last_window)
                     .then(|last_position| {
@@ -133,9 +133,10 @@ impl Mapper {
             Message::KeyPressed(key) => {
                 if key != keyboard::Key::Unidentified {
                     println!("The following key was pressed!: {:?}", key);
-                    // TODO: Use whatever button on the frontend was pressed to know which gamepad button to use here!
-                    self.profile_config.insert_key_to_all(Button::South, key);
-                    return window::close(*self.windows.keys().last().unwrap());
+                    self.profile_config.insert_key_to_all(self.current_btn_to_bind.unwrap(), key);
+                    if self.is_key_press_window_open() {
+                        return window::close(*self.windows.keys().last().unwrap());
+                    }
                 }
                 Task::none()
             }
@@ -172,11 +173,13 @@ impl Mapper {
 struct MainWindow;
 
 impl MainWindow {
-    fn get_button_mapper<'b>(label: String) -> Column<'b, Message> {
-        column![
-            text(label),
-            button("InsertValueHere")
-        ].width(Length::Fill).align_x(Horizontal::Center)
+    fn get_button_mapper<'b>(label: String, btn: Button) -> Row<'b, Message> {
+        row![
+            text(format!("Gamepad Input: {}", label)),
+            // TODO: Get current button assignment here!
+            text(format!(" is currently assigned to: {}", "BLURG")),
+            button("Set").on_press(Message::OpenWindow(btn))
+        ].width(Length::Fill)
     }
 }
 
@@ -184,28 +187,15 @@ impl Window for MainWindow {
     fn view(&self, _window_id: Id) -> Element<'_, Message> {
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
-        let window_test = button("Open Window").on_press(Message::OpenWindow);
+        // let window_test = button("Assign Key Test").on_press(Message::OpenWindow);
 
         column![
-            row![
-                column![
-                    text("D-Pad"),
-                    MainWindow::get_button_mapper(String::from("Up")),
-                    row![
-                        MainWindow::get_button_mapper(String::from("Left")),
-                        MainWindow::get_button_mapper(String::from("Right")),
-                    ],
-                    MainWindow::get_button_mapper(String::from("Down")),
-                ].width(Length::Fill).spacing(25),
-                column![].width(Length::Fill),
-                column![].width(Length::Fill),
-            ].width(Length::Fill).height(Length::Fill),
-            row![].width(Length::Fill).height(Length::Fill),
-            row![
-                Container::new(window_test).width(Length::Fill).align_x(Horizontal::Right),
-                Container::new(activate).width(Length::Fill).align_x(Horizontal::Right),
-                Container::new(deactivate).align_x(Horizontal::Right),
-            ].spacing(10).width(Length::Fill).height(Length::Fill)
+            text("D-Pad"),
+            MainWindow::get_button_mapper(String::from("Up"), Button::DPadUp),
+            MainWindow::get_button_mapper(String::from("Left"), Button::DPadLeft),
+            MainWindow::get_button_mapper(String::from("Right"), Button::DPadRight),
+            MainWindow::get_button_mapper(String::from("Down"), Button::DPadDown),
+            row![activate, deactivate],
         ].spacing(10).into()
     }
 }

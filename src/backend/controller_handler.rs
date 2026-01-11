@@ -12,11 +12,6 @@ const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>, is_handler_running: Arc<AtomicBool>) {
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
-    // Iterate over all connected gamepads
-    for (_id, gamepad) in gilrs.lock().unwrap().gamepads() {
-        println!("{} is {:?}", gamepad.name(), gamepad.power_info());
-    }
-
     let (mouse_x_pix, mouse_y_pix) = enigo.location().unwrap_or((0, 0));
     let mut mouse_x_pos = mouse_x_pix as f32;
     let mut mouse_y_pos = mouse_y_pix as f32;
@@ -26,8 +21,6 @@ pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, active_gamepad_co
     while is_handler_running.load(Ordering::Relaxed) == true {
         // Examine new events
         while let Some(Event { id, event, time, .. }) = gilrs.lock().unwrap().next_event() {
-            println!("{:?} New event from {}: {:?}", time, id, event);
-
             // TODO: Handle when Gilrs find a new GamepadId that's missing from the map!
             let agc = active_gamepad_config_map.get(&id).unwrap();
 
