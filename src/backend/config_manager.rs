@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
 use enigo::Key;
-use gilrs::{Axis, Button, Gamepad, GamepadId, Gilrs};
+use gilrs::{Axis, Button, Gamepad, Gilrs};
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
@@ -16,44 +17,44 @@ fn get_config_path() -> Result<PathBuf> {
     Ok(config_path_buf)
 }
 
-pub struct ActiveProfileConfig {
-    gamepad_config_map: HashMap<GamepadId, GamepadConfig>,
-}
-
-impl ActiveProfileConfig {
-    // TODO: Instead of generating a config by default, we should load from file first!
-    pub fn new() -> Result<Self> {
-        // TODO: We should capture this context instead of creating separate new ones here and in controller_handler!
-        let gilrs = Gilrs::new().map_err(|e| {
-            anyhow!(format!("Unable to load Gamepad Input Library (Gilrs): {}", e.to_string()))
-        })?;
-
-        let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
-        for (gp_id, gp) in gilrs.gamepads() {
-            gamepad_config_map.insert(gp_id, GamepadConfig::new(gp));
-        }
-
-        Ok(Self {
-            gamepad_config_map
-        })
-    }
-
-    pub fn get_key(&self, gp_id: &GamepadId, btn: &Button) -> Option<&Key> {
-        self.gamepad_config_map.get(gp_id)?.get_key(btn)
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct ProfileConfig {
     gamepad_configs: Vec<GamepadConfig>,
 }
 
 impl ProfileConfig {
+    pub fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Self> {
+        let config_path_buf = get_config_path()?;
+        let config_path = config_path_buf.as_path();
+        let mut profile_config: ProfileConfig;
+
+        if !config_path.exists() {
+            profile_config = Self {
+                gamepad_configs: Vec::new(),
+            }
+        } else {
+            let data_string = fs::read_to_string(config_path)?;
+            profile_config = serde_json::from_str(&*data_string)?;
+        }
+
+        // Add any missing gamepads as empty configs
+        for (_, gamepad) in gilrs.lock().unwrap().gamepads() {
+            let gc_search_result = profile_config.gamepad_configs.iter().find(|gc| {
+                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
+            });
+            if gc_search_result.is_none() {
+                profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
+            }
+        }
+
+        Ok(profile_config)
+    }
+
     pub fn save(&self) -> Result<()> {
         let config_path_buf = get_config_path()?;
         let config_path = config_path_buf.as_path();
         if !config_path.exists() {
-            let prefix = config_path.parent().ok_or(anyhow!("Config path prefix not defined. This should never happen if the library is working."))?;
+            let prefix = config_path.parent().ok_or(anyhow!("Config path prefix not defined. This should never happen if the directories library is working."))?;
             if !prefix.exists() {
                 create_dir_all(prefix)?;
             }
@@ -61,10 +62,14 @@ impl ProfileConfig {
         fs::write(config_path, serde_json::to_string_pretty(&self)?)?;
         Ok(())
     }
+
+    pub fn gamepad_configs(&self) -> &Vec<GamepadConfig> {
+        &self.gamepad_configs
+    }
 }
 
-#[derive(Serialize, Deserialize)]
-struct GamepadConfig {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct GamepadConfig {
     controller_name: String,
     controller_uuid: Uuid,
     button_map: HashMap<Button, Key>,
@@ -72,7 +77,7 @@ struct GamepadConfig {
 }
 
 impl GamepadConfig {
-    pub fn new(gamepad: Gamepad) -> Self {
+    pub fn new(gamepad: &Gamepad) -> Self {
         // TODO: Remove this after testing!
         let mut button_map: HashMap<Button, Key> = HashMap::new();
         button_map.insert(Button::South, Key::Unicode('A'));
@@ -91,5 +96,9 @@ impl GamepadConfig {
 
     pub fn get_key(&self, btn: &Button) -> Option<&Key> {
         self.button_map.get(btn)
+    }
+
+    pub fn uuid(&self) -> &Uuid {
+        &self.controller_uuid
     }
 }

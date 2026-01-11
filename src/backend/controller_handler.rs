@@ -1,19 +1,19 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};
-use gilrs::{Axis, Event, Gilrs};
+use gilrs::{Axis, Event, GamepadId, Gilrs};
 use gilrs::EventType::{AxisChanged, ButtonPressed, ButtonReleased};
-use crate::backend::config_manager::ActiveProfileConfig;
+use crate::backend::config_manager::{GamepadConfig};
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-pub async fn handle_controller_input(active_profile_config: Arc<Mutex<ActiveProfileConfig>>, is_handler_running: Arc<AtomicBool>) {
-    let mut gilrs = Gilrs::new().unwrap();
+pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>, is_handler_running: Arc<AtomicBool>) {
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
     // Iterate over all connected gamepads
-    for (_id, gamepad) in gilrs.gamepads() {
+    for (_id, gamepad) in gilrs.lock().unwrap().gamepads() {
         println!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
 
@@ -24,18 +24,19 @@ pub async fn handle_controller_input(active_profile_config: Arc<Mutex<ActiveProf
     let mut mouse_y_amt = 0.0;
 
     while is_handler_running.load(Ordering::Relaxed) == true {
-        let apc = active_profile_config.lock().unwrap();
-
         // Examine new events
-        while let Some(Event { id, event, time, .. }) = gilrs.next_event() {
+        while let Some(Event { id, event, time, .. }) = gilrs.lock().unwrap().next_event() {
             println!("{:?} New event from {}: {:?}", time, id, event);
 
+            // TODO: Handle when Gilrs find a new GamepadId that's missing from the map!
+            let agc = active_gamepad_config_map.get(&id).unwrap();
+
             if let ButtonPressed(btn, _) = event {
-                if let Some(key) = apc.get_key(&id, &btn) {
+                if let Some(key) = agc.get_key(&btn) {
                     enigo.key(*key, Direction::Press).unwrap();
                 }
             } else if let ButtonReleased(btn, _) = event {
-                if let Some(key) = apc.get_key(&id, &btn) {
+                if let Some(key) = agc.get_key(&btn) {
                     enigo.key(*key, Direction::Release).unwrap();
                 }
             } else if let AxisChanged(axis, amt, _) = event {

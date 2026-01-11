@@ -1,12 +1,14 @@
 use crate::ui::key_press_frontend::KeyPressWindow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use gilrs::{GamepadId, Gilrs};
 use iced::alignment::Horizontal;
 use iced::{window, Element, Length, Size, Subscription, Task, Vector};
 use iced::widget::{button, column, row, text, Column, Container};
 use iced::window::{Id, Settings};
-use crate::backend::config_manager::{ActiveProfileConfig};
+use uuid::Uuid;
+use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::backend::controller_handler::handle_controller_input;
 
 #[derive(Clone, Debug)]
@@ -24,7 +26,8 @@ pub trait Window {
 }
 
 pub struct Mapper {
-    active_profile_config: Arc<Mutex<ActiveProfileConfig>>,
+    gilrs: Arc<Mutex<Gilrs>>,
+    profile_config: ProfileConfig,
     windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>
 }
@@ -33,10 +36,14 @@ impl Mapper {
     pub fn new() -> (Self, Task<Message>) {
         let (_, open) = window::open(Settings::default());
 
+        // TODO: Figure out if there's a better way to handle these errors on startup!
+        let gilrs = Arc::new(Mutex::new(Gilrs::new().unwrap()));
+
         (
             Self {
-                // TODO: Figure out if there's a better way to handle this error on startup!
-                active_profile_config: Arc::new(Mutex::new(ActiveProfileConfig::new().unwrap())),
+                gilrs: gilrs.clone(),
+                // TODO: Figure out if there's a better way to handle these errors on startup!
+                profile_config: ProfileConfig::load(gilrs.clone()).unwrap(),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
@@ -44,12 +51,27 @@ impl Mapper {
         )
     }
 
+    fn get_active_gamepad_config_map(&self) -> HashMap<GamepadId, GamepadConfig> {
+        let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
+
+        for (gamepad_id, gamepad) in self.gilrs.lock().unwrap().gamepads() {
+            let gc_search_result = self.profile_config.gamepad_configs().iter().find(|gc| {
+                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
+            });
+            if let Some(gc) = gc_search_result {
+                gamepad_config_map.insert(gamepad_id, gc.clone());
+            }
+        }
+
+        gamepad_config_map
+    }
+
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Activate => Task::perform(
                 {
                     self.is_handler_running.store(true, Ordering::Relaxed);
-                    handle_controller_input(self.active_profile_config.clone(), self.is_handler_running.clone())
+                    handle_controller_input(self.gilrs.clone(), self.get_active_gamepad_config_map(), self.is_handler_running.clone())
                 },
                 Message::Activated,
             ),
