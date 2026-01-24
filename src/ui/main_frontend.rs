@@ -6,6 +6,7 @@ use gilrs::{Button, GamepadId, Gilrs};
 use iced::{keyboard, window, Element, Event, Length, Size, Subscription, Task, Vector};
 use iced::widget::{button, column, row, text, Row};
 use iced::window::{Id, Settings};
+use serde_json::Value::{Object, String as Json_String};
 use uuid::Uuid;
 use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::backend::controller_handler::handle_controller_input;
@@ -22,7 +23,7 @@ pub enum Message {
 }
 
 pub trait Window {
-    fn view(&self, id: Id) -> Element<'_, Message>;
+    fn view(&self, id: Id, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message>;
 }
 
 pub struct Mapper {
@@ -51,6 +52,8 @@ impl Mapper {
     }
 
     fn get_active_gamepad_config_map(&self) -> HashMap<GamepadId, GamepadConfig> {
+        // TODO: This needs to essentially be removed in favor of sharing the ProfileConfig between
+        //  the windows and the controller handler!
         let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
 
         for (gamepad_id, gamepad) in self.gilrs.lock().unwrap().gamepads() {
@@ -132,7 +135,6 @@ impl Mapper {
             },
             Message::KeyPressed(key) => {
                 if key != keyboard::Key::Unidentified {
-                    println!("The following key was pressed!: {:?}", key);
                     self.profile_config.insert_key_to_all(self.current_btn_to_bind.unwrap(), key);
                     if self.is_key_press_window_open() {
                         return window::close(*self.windows.keys().last().unwrap());
@@ -164,7 +166,7 @@ impl Mapper {
 
     pub fn view(&self, window_id: Id) -> Element<'_, Message> {
         if let Some(window) = self.windows.get(&window_id) {
-            return window.view(window_id);
+            return window.view(window_id, self.get_active_gamepad_config_map());
         }
         text("Error: window_id Not Found, could not load view!").into()
     }
@@ -173,28 +175,44 @@ impl Mapper {
 struct MainWindow;
 
 impl MainWindow {
-    fn get_button_mapper<'b>(label: String, btn: Button) -> Row<'b, Message> {
+    fn get_button_mapper<'b>(label: String, btn: Button, gc_opt: Option<&GamepadConfig>) -> Row<'b, Message> {
         row![
             text(format!("Gamepad Input: {}", label)),
-            // TODO: Get current button assignment here!
-            text(format!(" is currently assigned to: {}", "BLURG")),
+            text(format!(" is currently assigned to: {}", Self::get_str_from_config(gc_opt, &btn))),
             button("Set").on_press(Message::OpenWindow(btn))
         ].width(Length::Fill)
+    }
+
+    fn get_str_from_config(gc_opt: Option<&GamepadConfig>, gilrs_btn: &Button) -> String {
+        if let Some(gc) = gc_opt {
+            if let Some(key) = gc.get_key(gilrs_btn) {
+                // TODO: Put in proper error handling!
+                if let Object(obj_map) = serde_json::to_value(key).unwrap() {
+                    if let Some(key_val) = obj_map.get("Unicode") {
+                        if let Json_String(key_str) = key_val {
+                            return key_str.clone().to_uppercase();
+                        }
+                    }
+                }
+            }
+        }
+        String::from("None")
     }
 }
 
 impl Window for MainWindow {
-    fn view(&self, _window_id: Id) -> Element<'_, Message> {
+    fn view(&self, _window_id: Id, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message> {
+        let single_active_gamepad_config = active_gamepad_config_map.values().next();
+
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
-        // let window_test = button("Assign Key Test").on_press(Message::OpenWindow);
 
         column![
             text("D-Pad"),
-            MainWindow::get_button_mapper(String::from("Up"), Button::DPadUp),
-            MainWindow::get_button_mapper(String::from("Left"), Button::DPadLeft),
-            MainWindow::get_button_mapper(String::from("Right"), Button::DPadRight),
-            MainWindow::get_button_mapper(String::from("Down"), Button::DPadDown),
+            MainWindow::get_button_mapper(String::from("Up"), Button::DPadUp, single_active_gamepad_config),
+            MainWindow::get_button_mapper(String::from("Left"), Button::DPadLeft, single_active_gamepad_config),
+            MainWindow::get_button_mapper(String::from("Right"), Button::DPadRight, single_active_gamepad_config),
+            MainWindow::get_button_mapper(String::from("Down"), Button::DPadDown, single_active_gamepad_config),
             row![activate, deactivate],
         ].spacing(10).into()
     }
