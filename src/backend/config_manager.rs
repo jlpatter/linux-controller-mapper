@@ -60,6 +60,13 @@ impl ProfileConfig {
         }
     }
 
+    pub fn unset_key_to_all(&mut self, btn: Button) {
+        // TODO: This function is temporary until proper multi-controller support is implemented!
+        for gc in &mut self.gamepad_configs {
+            gc.remove_key(btn);
+        }
+    }
+
     pub fn save(&self) -> Result<()> {
         let config_path_buf = get_config_path()?;
         let config_path = config_path_buf.as_path();
@@ -128,6 +135,10 @@ impl GamepadConfig {
         if let Some(k) = get_enigo_key_from_iced_key(key) {
             self.button_map.insert(btn, k);
         }
+    }
+
+    pub fn remove_key(&mut self, btn: Button) {
+        self.button_map.remove(&btn);
     }
 
     pub fn get_key(&self, btn: &Button) -> Option<&Key> {

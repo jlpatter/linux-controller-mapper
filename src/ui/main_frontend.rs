@@ -17,10 +17,11 @@ pub enum Message {
     Activate,
     Activated(()),
     Deactivate,
-    OpenWindow(Button),
+    OpenKeySetWindow(Button),
     WindowOpened(Id),
     WindowClosed(Id),
     KeyPressed(keyboard::Key),
+    UnsetButton(Button),
 }
 
 pub trait Window {
@@ -88,7 +89,7 @@ impl Mapper {
                 self.is_handler_running.store(false, Ordering::Relaxed);
                 Task::none()
             },
-            Message::OpenWindow(btn) => {
+            Message::OpenKeySetWindow(btn) => {
                 let Some(last_window) = self.windows.keys().last() else {
                     return Task::none();
                 };
@@ -142,6 +143,10 @@ impl Mapper {
                     }
                 }
                 Task::none()
+            },
+            Message::UnsetButton(btn) => {
+                self.profile_config.unset_key_to_all(btn);
+                Task::none()
             }
         }
     }
@@ -181,7 +186,8 @@ impl MainWindow {
             text(label).color(Color::from_rgb8(255, 0, 0)),
             text(" is currently assigned to: ".to_string()),
             text(Self::get_str_from_config(gc, &btn)).color(Color::from_rgb8(0, 0, 255)),
-            container(button("Set").on_press(Message::OpenWindow(btn))).padding([0, 10])
+            container(button("Set").on_press(Message::OpenKeySetWindow(btn))).padding([0, 10]),
+            container(button("Unset").on_press(Message::UnsetButton(btn))).padding([0, 10]),
         ].width(Length::Fill)
     }
 
