@@ -116,7 +116,7 @@ impl GamepadConfig {
         button_map.insert(Button::East, Key::Unicode('B'));
 
         Self {
-            controller_name: String::from(gamepad.name()),
+            controller_name: gamepad.name().to_string(),
             controller_uuid: Uuid::from_bytes(gamepad.uuid()),
             // TODO: Remove this after testing!
             button_map,
