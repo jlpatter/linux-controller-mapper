@@ -46,39 +46,40 @@ impl Window for MainWindow {
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
 
-        scrollable(column![
-            header("Menu Pad"),
-            MainWindow::button_mapper_row("Start", Button::Start, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Select", Button::Select, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Mode", Button::Mode, single_active_gamepad_config),
+        column![
+            scrollable(column![
+                header("Menu Pad"),
+                MainWindow::button_mapper_row("Start", Button::Start, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Select", Button::Select, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Mode", Button::Mode, single_active_gamepad_config),
 
-            header("Action Pad"),
-            MainWindow::button_mapper_row("North", Button::North, single_active_gamepad_config),
-            MainWindow::button_mapper_row("West", Button::West, single_active_gamepad_config),
-            MainWindow::button_mapper_row("East", Button::East, single_active_gamepad_config),
-            MainWindow::button_mapper_row("South", Button::South, single_active_gamepad_config),
+                header("Action Pad"),
+                MainWindow::button_mapper_row("North", Button::North, single_active_gamepad_config),
+                MainWindow::button_mapper_row("West", Button::West, single_active_gamepad_config),
+                MainWindow::button_mapper_row("East", Button::East, single_active_gamepad_config),
+                MainWindow::button_mapper_row("South", Button::South, single_active_gamepad_config),
 
-            header("Sticks"),
-            MainWindow::button_mapper_row("Left Stick Press", Button::LeftThumb, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Right Stick Press", Button::RightThumb, single_active_gamepad_config),
+                header("Sticks"),
+                MainWindow::button_mapper_row("Left Stick Press", Button::LeftThumb, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Right Stick Press", Button::RightThumb, single_active_gamepad_config),
 
-            header("Triggers"),
-            MainWindow::button_mapper_row("Left Bumper", Button::LeftTrigger, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Left Trigger", Button::LeftTrigger2, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Right Bumper", Button::RightTrigger, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Right Trigger", Button::RightTrigger2, single_active_gamepad_config),
+                header("Triggers"),
+                MainWindow::button_mapper_row("Left Bumper", Button::LeftTrigger, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Left Trigger", Button::LeftTrigger2, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Right Bumper", Button::RightTrigger, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Right Trigger", Button::RightTrigger2, single_active_gamepad_config),
 
-            header("D-Pad"),
-            MainWindow::button_mapper_row("Up", Button::DPadUp, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Left", Button::DPadLeft, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Right", Button::DPadRight, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Down", Button::DPadDown, single_active_gamepad_config),
+                header("D-Pad"),
+                MainWindow::button_mapper_row("Up", Button::DPadUp, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Left", Button::DPadLeft, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Right", Button::DPadRight, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Down", Button::DPadDown, single_active_gamepad_config),
 
-            header("Misc."),
-            MainWindow::button_mapper_row("C Button", Button::C, single_active_gamepad_config),
-            MainWindow::button_mapper_row("Z Button", Button::Z, single_active_gamepad_config),
-
+                header("Misc."),
+                MainWindow::button_mapper_row("C Button", Button::C, single_active_gamepad_config),
+                MainWindow::button_mapper_row("Z Button", Button::Z, single_active_gamepad_config),
+            ].spacing(5)).height(Length::Fill),
             row![container(activate).padding([0, 10]), deactivate],
-        ].spacing(5)).into()
+        ].spacing(5).height(Length::Fill).into()
     }
 }
