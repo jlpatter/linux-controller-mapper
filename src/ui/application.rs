@@ -18,7 +18,7 @@ pub enum Message {
     Activated(()),
     Deactivate,
     OpenKeySetWindow(Button),
-    WindowOpened(Id),
+    WindowOpened(Id, WindowType),
     WindowClosed(Id),
     KeyPressed(keyboard::Key),
     UnsetButton(Button),
@@ -45,7 +45,7 @@ impl Application {
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
-            open.map(Message::WindowOpened),
+            open.map(|id| Message::WindowOpened(id, WindowType::Main)),
         )
     }
 
@@ -110,12 +110,12 @@ impl Application {
 
                         open
                     })
-                    .map(Message::WindowOpened)
+                    .map(|id| Message::WindowOpened(id, WindowType::KeyPress))
             },
-            Message::WindowOpened(id) => {
-                if self.windows.is_empty() {
+            Message::WindowOpened(id, window_type) => {
+                if window_type == WindowType::Main {
                     self.windows.insert(id, Box::new(MainWindow{}));
-                } else {
+                } else if window_type == WindowType::KeyPress {
                     self.windows.insert(id, Box::new(KeyPressWindow{}));
                 }
 
@@ -133,8 +133,11 @@ impl Application {
             Message::KeyPressed(key) => {
                 if key != keyboard::Key::Unidentified {
                     self.profile_config.insert_key_to_all(self.current_btn_to_bind.unwrap(), key);
-                    if self.is_key_press_window_open() {
-                        return window::close(*self.windows.keys().last().unwrap());
+                    let key_press_window = self.windows.iter().find(|(_, window)| {
+                        window.window_type() == WindowType::KeyPress
+                    });
+                    if let Some((id, _)) = key_press_window {
+                        return window::close(*id);
                     }
                 }
                 Task::none()

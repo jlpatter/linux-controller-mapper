@@ -4,7 +4,7 @@ use iced::Element;
 use crate::backend::config_manager::GamepadConfig;
 use crate::ui::application::Message;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum WindowType {
     Main,
     KeyPress
