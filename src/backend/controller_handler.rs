@@ -1,16 +1,16 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};
-use gilrs::{Axis, Event, GamepadId, Gilrs};
+use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::{AxisChanged, ButtonPressed, ButtonReleased};
-use crate::backend::config_manager::{GamepadConfig};
+use crate::backend::config_manager::ProfileConfig;
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>, is_handler_running: Arc<AtomicBool>) {
+pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, profile_config: Arc<Mutex<ProfileConfig>>, is_handler_running: Arc<AtomicBool>) {
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
+    let active_gamepad_config_map = profile_config.lock().unwrap().get_gamepad_config_map(gilrs.clone());
 
     let (mouse_x_pix, mouse_y_pix) = enigo.location().unwrap_or((0, 0));
     let mut mouse_x_pos = mouse_x_pix as f32;

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
 use enigo::Key;
-use gilrs::{Axis, Button, Gamepad, Gilrs};
+use gilrs::{Axis, Button, Gamepad, GamepadId, Gilrs};
 use iced::keyboard;
 use iced::keyboard::Key::{Character};
 use iced::keyboard::key::Named;
@@ -80,8 +80,20 @@ impl ProfileConfig {
         Ok(())
     }
 
-    pub fn gamepad_configs(&self) -> &Vec<GamepadConfig> {
-        &self.gamepad_configs
+    pub fn get_gamepad_config_map(&self, gilrs: Arc<Mutex<Gilrs>>) -> HashMap<GamepadId, GamepadConfig> {
+        // The reason we can't store this HashMap directly is that GamepadId is not static between runs.
+        let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
+
+        for (gamepad_id, gamepad) in gilrs.lock().unwrap().gamepads() {
+            let gc_search_result = self.gamepad_configs.iter().find(|gc| {
+                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
+            });
+            if let Some(gc) = gc_search_result {
+                gamepad_config_map.insert(gamepad_id, gc.clone());
+            }
+        }
+
+        gamepad_config_map
     }
 }
 

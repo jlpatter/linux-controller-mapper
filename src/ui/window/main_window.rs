@@ -1,16 +1,24 @@
-use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use enigo::Key::Unicode;
-use gilrs::{Button, GamepadId};
+use gilrs::{Button, Gilrs};
 use iced::{Color, Element, Length};
 use iced::widget::{button, column, container, row, scrollable, text, Row};
-use crate::backend::config_manager::GamepadConfig;
+use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::ui::application::{Message};
 use crate::ui::window::utils::header;
 use crate::ui::window::base::{Window, WindowType};
 
-pub struct MainWindow;
+pub struct MainWindow {
+    profile_config: Arc<Mutex<ProfileConfig>>
+}
 
 impl MainWindow {
+    pub fn new(profile_config: Arc<Mutex<ProfileConfig>>) -> Self {
+        Self {
+            profile_config
+        }
+    }
+
     fn button_mapper_row<'b>(label: &'b str, btn: Button, gc: &GamepadConfig) -> Row<'b, Message> {
         row![
             text(label).color(Color::from_rgb8(255, 0, 0)),
@@ -39,7 +47,8 @@ impl Window for MainWindow {
         WindowType::Main
     }
 
-    fn view(&self, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message> {
+    fn view(&self, gilrs: Arc<Mutex<Gilrs>>) -> Element<'_, Message> {
+        let active_gamepad_config_map = self.profile_config.lock().unwrap().get_gamepad_config_map(gilrs);
         // TODO: Add a dropdown to support multiple gamepads!
         let single_active_gamepad_config = active_gamepad_config_map.values().next().unwrap();
 

@@ -1,12 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use gilrs::{Button, GamepadId, Gilrs};
+use gilrs::{Button, Gilrs};
 use iced::{keyboard, window, Element, Event, Size, Subscription, Task, Vector};
 use iced::widget::{text};
 use iced::window::{Id, Settings};
-use uuid::Uuid;
-use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
+use crate::backend::config_manager::ProfileConfig;
 use crate::backend::controller_handler::handle_controller_input;
 use crate::ui::window::key_press_window::KeyPressWindow;
 use crate::ui::window::base::{Window, WindowType};
@@ -27,7 +26,7 @@ pub enum Message {
 pub struct Application {
     gilrs: Arc<Mutex<Gilrs>>,
     current_btn_to_bind: Option<Button>,
-    profile_config: ProfileConfig,
+    profile_config: Arc<Mutex<ProfileConfig>>,
     windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>,
 }
@@ -41,29 +40,12 @@ impl Application {
             Self {
                 gilrs: gilrs.clone(),
                 current_btn_to_bind: None,
-                profile_config: ProfileConfig::load(gilrs.clone()).unwrap(),
+                profile_config: Arc::new(Mutex::new(ProfileConfig::load(gilrs.clone()).unwrap())),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
             open.map(|id| Message::WindowOpened(id, WindowType::Main)),
         )
-    }
-
-    fn get_active_gamepad_config_map(&self) -> HashMap<GamepadId, GamepadConfig> {
-        // TODO: This needs to essentially be removed in favor of sharing the ProfileConfig between
-        //  the window and the controller handler!
-        let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
-
-        for (gamepad_id, gamepad) in self.gilrs.lock().unwrap().gamepads() {
-            let gc_search_result = self.profile_config.gamepad_configs().iter().find(|gc| {
-                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
-            });
-            if let Some(gc) = gc_search_result {
-                gamepad_config_map.insert(gamepad_id, gc.clone());
-            }
-        }
-
-        gamepad_config_map
     }
 
     fn is_key_press_window_open(&self) -> bool {
@@ -75,7 +57,7 @@ impl Application {
             Message::Activate => Task::perform(
                 {
                     self.is_handler_running.store(true, Ordering::Relaxed);
-                    handle_controller_input(self.gilrs.clone(), self.get_active_gamepad_config_map(), self.is_handler_running.clone())
+                    handle_controller_input(self.gilrs.clone(), self.profile_config.clone(), self.is_handler_running.clone())
                 },
                 Message::Activated,
             ),
@@ -114,7 +96,7 @@ impl Application {
             },
             Message::WindowOpened(id, window_type) => {
                 if window_type == WindowType::Main {
-                    self.windows.insert(id, Box::new(MainWindow{}));
+                    self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone())));
                 } else if window_type == WindowType::KeyPress {
                     self.windows.insert(id, Box::new(KeyPressWindow{}));
                 }
@@ -132,7 +114,9 @@ impl Application {
             },
             Message::KeyPressed(key) => {
                 if key != keyboard::Key::Unidentified {
-                    self.profile_config.insert_key_to_all(self.current_btn_to_bind.unwrap(), key);
+                    let mut profile_config = self.profile_config.lock().unwrap();
+                    // TODO: Replace self.current_btn_to_bind.unwrap() with a proper check
+                    profile_config.insert_key_to_all(self.current_btn_to_bind.unwrap(), key);
                     let key_press_window = self.windows.iter().find(|(_, window)| {
                         window.window_type() == WindowType::KeyPress
                     });
@@ -143,7 +127,8 @@ impl Application {
                 Task::none()
             },
             Message::UnsetButton(btn) => {
-                self.profile_config.unset_key_to_all(btn);
+                let mut profile_config = self.profile_config.lock().unwrap();
+                profile_config.unset_key_to_all(btn);
                 Task::none()
             }
         }
@@ -170,7 +155,7 @@ impl Application {
 
     pub fn view(&self, window_id: Id) -> Element<'_, Message> {
         if let Some(window) = self.windows.get(&window_id) {
-            return window.view(self.get_active_gamepad_config_map());
+            return window.view(self.gilrs.clone());
         }
         text("Error: window_id Not Found, could not load view!").into()
     }
