@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -9,12 +10,13 @@ use crate::backend::config_manager::ProfileConfig;
 use crate::backend::controller_handler::handle_controller_input;
 use crate::ui::window::key_press_window::KeyPressWindow;
 use crate::ui::window::base::{Window, WindowType};
+use crate::ui::window::error_window::ErrorWindow;
 use crate::ui::window::main_window::MainWindow;
 
 #[derive(Clone, Debug)]
 pub enum Message {
     Activate,
-    Activated(()),
+    Activated(Result<(), String>),
     Deactivate,
     OpenKeySetWindow(Button),
     WindowOpened(Id, WindowType),
@@ -31,6 +33,7 @@ pub struct Application {
     profile_config: Arc<Mutex<ProfileConfig>>,
     windows: BTreeMap<Id, Box<dyn Window>>,
     is_handler_running: Arc<AtomicBool>,
+    current_error: String,
 }
 
 impl Application {
@@ -45,6 +48,7 @@ impl Application {
                 profile_config: Arc::new(Mutex::new(ProfileConfig::new(gilrs.clone()).unwrap())),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
+                current_error: String::new(),
             },
             open.map(|id| Message::WindowOpened(id, WindowType::Main)),
         )
@@ -52,6 +56,15 @@ impl Application {
 
     fn is_key_press_window_open(&self) -> bool {
         self.windows.values().any(|window| window.window_type() == WindowType::KeyPress)
+    }
+
+    fn handle_error(&mut self, result: Result<(), String>) -> Task<Message> {
+        if let Err(e) = result {
+            self.current_error = e;
+            let (_, open_task) = window::open(Settings::default());
+            return open_task.map(|id| Message::WindowOpened(id, WindowType::Error));
+        }
+        Task::none()
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -63,7 +76,9 @@ impl Application {
                 },
                 Message::Activated,
             ),
-            Message::Activated(()) => Task::none(),
+            Message::Activated(result) => {
+                self.handle_error(result)
+            },
             Message::Deactivate => {
                 self.is_handler_running.store(false, Ordering::Relaxed);
                 Task::none()
@@ -101,6 +116,8 @@ impl Application {
                     self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone(), self.is_handler_running.clone())));
                 } else if window_type == WindowType::KeyPress {
                     self.windows.insert(id, Box::new(KeyPressWindow{}));
+                } else if window_type == WindowType::Error {
+                    self.windows.insert(id, Box::new(ErrorWindow::new(self.current_error.clone())));
                 }
 
                 Task::none()

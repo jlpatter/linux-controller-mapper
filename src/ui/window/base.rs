@@ -6,7 +6,8 @@ use crate::ui::application::Message;
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum WindowType {
     Main,
-    KeyPress
+    KeyPress,
+    Error
 }
 
 pub trait Window {
