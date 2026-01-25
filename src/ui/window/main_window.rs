@@ -40,8 +40,8 @@ impl Window for MainWindow {
             text("Controller Inactive")
         };
 
-        // let save_profile = button("Save Profile").on_press(Message::SaveProfile);
-        // let load_profile = button("Load Profile").on_press(Message::LoadProfile);
+        let save_profile = button("Save Profile").on_press(Message::SaveProfile);
+        let load_profile = button("Load Profile").on_press(Message::LoadProfile);
 
         column![
             scrollable(column![
@@ -77,7 +77,7 @@ impl Window for MainWindow {
                 button_mapper_row("Z Button", Button::Z, single_active_gamepad_config),
             ].spacing(5)).height(Length::Fill),
             row![activate, deactivate, handler_text].spacing(10),
-            // row![save_profile, load_profile].spacing(10),
+            row![save_profile, load_profile].spacing(10),
         ].spacing(5).height(Length::Fill).into()
     }
 }

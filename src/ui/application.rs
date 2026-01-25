@@ -21,6 +21,8 @@ pub enum Message {
     WindowClosed(Id),
     KeyPressed(keyboard::Key),
     UnsetButton(Button),
+    SaveProfile,
+    LoadProfile,
 }
 
 pub struct Application {
@@ -129,6 +131,19 @@ impl Application {
             Message::UnsetButton(btn) => {
                 let mut profile_config = self.profile_config.lock().unwrap();
                 profile_config.unset_key_to_all(btn);
+                Task::none()
+            },
+            Message::SaveProfile => {
+                let profile_config = self.profile_config.lock().unwrap();
+                profile_config.save().unwrap();
+                Task::none()
+            },
+            Message::LoadProfile => {
+                let loaded_profile_config_opt = ProfileConfig::load(self.gilrs.clone()).unwrap();
+                if let Some(loaded_profile_config) = loaded_profile_config_opt {
+                    let mut current_profile_config = self.profile_config.lock().unwrap();
+                    *current_profile_config = loaded_profile_config;
+                }
                 Task::none()
             },
         }

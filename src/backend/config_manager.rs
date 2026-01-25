@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use directories::ProjectDirs;
+use directories::{BaseDirs, ProjectDirs};
 use enigo::Key;
 use gilrs::{Axis, Button, Gamepad, GamepadId, Gilrs};
 use iced::keyboard;
 use iced::keyboard::Key::{Character};
 use iced::keyboard::key::Named;
-use rfd::AsyncFileDialog;
+use rfd::FileDialog;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use crate::utils::lock_error_handler;
@@ -40,15 +40,14 @@ impl ProfileConfig {
         Ok(profile_config)
     }
 
-    pub async fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Option<Self>> {
-        let file_handle_opt = AsyncFileDialog::new()
+    pub fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Option<Self>> {
+        let file_path_opt = FileDialog::new()
             .add_filter("profile", &["lcm", "json"])
-            .set_directory("/")
-            .pick_file()
-            .await;
+            .set_directory(BaseDirs::new().ok_or(anyhow!("ERROR: Home directory not found!"))?.home_dir())
+            .pick_file();
 
-        if let Some(file_handle) = file_handle_opt {
-            let data_string = fs::read_to_string(file_handle.path())?;
+        if let Some(file_path) = file_path_opt {
+            let data_string = fs::read_to_string(file_path)?;
             let mut profile_config: ProfileConfig = serde_json::from_str(&*data_string)?;
 
             // Add any missing gamepads as empty configs
@@ -80,15 +79,14 @@ impl ProfileConfig {
         }
     }
 
-    pub async fn save(&self) -> Result<()> {
-        let file_handle_opt = AsyncFileDialog::new()
+    pub fn save(&self) -> Result<()> {
+        let file_path_opt = FileDialog::new()
             .add_filter("profile", &["lcm", "json"])
-            .set_directory("/")
-            .save_file()
-            .await;
+            .set_directory(BaseDirs::new().ok_or(anyhow!("ERROR: Home directory not found!"))?.home_dir())
+            .save_file();
 
-        if let Some(file_handle) = file_handle_opt {
-            fs::write(file_handle.path(), serde_json::to_string_pretty(&self)?)?;
+        if let Some(file_path) = file_path_opt {
+            fs::write(file_path, serde_json::to_string_pretty(&self)?)?;
         }
 
         Ok(())
