@@ -1,16 +1,16 @@
-use crate::ui::key_press_frontend::KeyPressWindow;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use enigo::Key::Unicode;
 use gilrs::{Button, GamepadId, Gilrs};
-use iced::{keyboard, window, Color, Element, Event, Length, Size, Subscription, Task, Vector};
-use iced::widget::{button, column, container, row, scrollable, text, Row};
+use iced::{keyboard, window, Element, Event, Size, Subscription, Task, Vector};
+use iced::widget::{text};
 use iced::window::{Id, Settings};
 use uuid::Uuid;
 use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::backend::controller_handler::handle_controller_input;
-use crate::ui::utils::header;
+use crate::ui::window::key_press_window::KeyPressWindow;
+use crate::ui::window::base::Window;
+use crate::ui::window::main_window::MainWindow;
 
 #[derive(Clone, Debug)]
 pub enum Message {
@@ -24,11 +24,7 @@ pub enum Message {
     UnsetButton(Button),
 }
 
-pub trait Window {
-    fn view(&self, id: Id, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message>;
-}
-
-pub struct Mapper {
+pub struct Application {
     gilrs: Arc<Mutex<Gilrs>>,
     current_btn_to_bind: Option<Button>,
     profile_config: ProfileConfig,
@@ -36,7 +32,7 @@ pub struct Mapper {
     is_handler_running: Arc<AtomicBool>,
 }
 
-impl Mapper {
+impl Application {
     pub fn new() -> (Self, Task<Message>) {
         let (_, open) = window::open(Settings::default());
         let gilrs = Arc::new(Mutex::new(Gilrs::new().unwrap()));
@@ -55,7 +51,7 @@ impl Mapper {
 
     fn get_active_gamepad_config_map(&self) -> HashMap<GamepadId, GamepadConfig> {
         // TODO: This needs to essentially be removed in favor of sharing the ProfileConfig between
-        //  the windows and the controller handler!
+        //  the window and the controller handler!
         let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
 
         for (gamepad_id, gamepad) in self.gilrs.lock().unwrap().gamepads() {
@@ -175,76 +171,5 @@ impl Mapper {
             return window.view(window_id, self.get_active_gamepad_config_map());
         }
         text("Error: window_id Not Found, could not load view!").into()
-    }
-}
-
-struct MainWindow;
-
-impl MainWindow {
-    fn get_button_mapper<'b>(label: String, btn: Button, gc: &GamepadConfig) -> Row<'b, Message> {
-        row![
-            text(label).color(Color::from_rgb8(255, 0, 0)),
-            text(" is currently assigned to: ".to_string()),
-            text(Self::get_str_from_config(gc, &btn)).color(Color::from_rgb8(0, 0, 255)),
-            container(button("Set").on_press(Message::OpenKeySetWindow(btn))).padding([0, 10]),
-            container(button("Unset").on_press(Message::UnsetButton(btn))).padding([0, 10]),
-        ].width(Length::Fill)
-    }
-
-    fn get_str_from_config(gc: &GamepadConfig, gilrs_btn: &Button) -> String {
-        if let Some(key) = gc.get_key(gilrs_btn) {
-            if let Unicode(u) = key  {
-                return u.to_string().to_uppercase();
-            } else {
-                // TODO: Technically I guess we should move away from using the debug form?
-                return format!("{:?}", key);
-            }
-        }
-        "None".to_string()
-    }
-}
-
-impl Window for MainWindow {
-    fn view(&self, _window_id: Id, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message> {
-        // TODO: Add a dropdown to support multiple gamepads!
-        let single_active_gamepad_config = active_gamepad_config_map.values().next().unwrap();
-
-        let activate = button("Activate").on_press(Message::Activate);
-        let deactivate = button("Deactivate").on_press(Message::Deactivate);
-
-        scrollable(column![
-            header("Menu Pad"),
-            MainWindow::get_button_mapper("Start".to_string(), Button::Start, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Select".to_string(), Button::Select, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Mode".to_string(), Button::Mode, single_active_gamepad_config),
-
-            header("Action Pad"),
-            MainWindow::get_button_mapper("North".to_string(), Button::North, single_active_gamepad_config),
-            MainWindow::get_button_mapper("West".to_string(), Button::West, single_active_gamepad_config),
-            MainWindow::get_button_mapper("East".to_string(), Button::East, single_active_gamepad_config),
-            MainWindow::get_button_mapper("South".to_string(), Button::South, single_active_gamepad_config),
-
-            header("Sticks"),
-            MainWindow::get_button_mapper("Left Stick Press".to_string(), Button::LeftThumb, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Right Stick Press".to_string(), Button::RightThumb, single_active_gamepad_config),
-
-            header("Triggers"),
-            MainWindow::get_button_mapper("Left Bumper".to_string(), Button::LeftTrigger, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Left Trigger".to_string(), Button::LeftTrigger2, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Right Bumper".to_string(), Button::RightTrigger, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Right Trigger".to_string(), Button::RightTrigger2, single_active_gamepad_config),
-
-            header("D-Pad"),
-            MainWindow::get_button_mapper("Up".to_string(), Button::DPadUp, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Left".to_string(), Button::DPadLeft, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Right".to_string(), Button::DPadRight, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Down".to_string(), Button::DPadDown, single_active_gamepad_config),
-
-            header("Misc."),
-            MainWindow::get_button_mapper("C Button".to_string(), Button::C, single_active_gamepad_config),
-            MainWindow::get_button_mapper("Z Button".to_string(), Button::Z, single_active_gamepad_config),
-
-            row![container(activate).padding([0, 10]), deactivate],
-        ].spacing(5)).into()
     }
 }

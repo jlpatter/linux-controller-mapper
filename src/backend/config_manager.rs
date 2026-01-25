@@ -115,18 +115,10 @@ pub struct GamepadConfig {
 
 impl GamepadConfig {
     pub fn new(gamepad: &Gamepad) -> Self {
-        // TODO: Remove this after testing!
-        let mut button_map: HashMap<Button, Key> = HashMap::new();
-        button_map.insert(Button::South, Key::Unicode('A'));
-        button_map.insert(Button::West, Key::Unicode('X'));
-        button_map.insert(Button::North, Key::Unicode('Y'));
-        button_map.insert(Button::East, Key::Unicode('B'));
-
         Self {
             controller_name: gamepad.name().to_string(),
             controller_uuid: Uuid::from_bytes(gamepad.uuid()),
-            // TODO: Remove this after testing!
-            button_map,
+            button_map: HashMap::new(),
             axis_map: HashMap::new(),
         }
     }

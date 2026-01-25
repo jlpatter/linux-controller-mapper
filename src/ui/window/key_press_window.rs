@@ -4,7 +4,8 @@ use iced::Element;
 use iced::widget::{row, text};
 use iced::window::Id;
 use crate::backend::config_manager::GamepadConfig;
-use crate::ui::main_frontend::{Message, Window};
+use crate::ui::application::{Message};
+use crate::ui::window::base::Window;
 
 pub struct KeyPressWindow;
 

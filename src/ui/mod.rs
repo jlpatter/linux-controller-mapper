@@ -1,3 +1,2 @@
-pub mod main_frontend;
-mod key_press_frontend;
-mod utils;
+pub mod application;
+mod window;
