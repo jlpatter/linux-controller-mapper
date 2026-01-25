@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fs;
-use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use directories::ProjectDirs;
@@ -10,8 +9,10 @@ use gilrs::{Axis, Button, Gamepad, GamepadId, Gilrs};
 use iced::keyboard;
 use iced::keyboard::Key::{Character};
 use iced::keyboard::key::Named;
+use rfd::AsyncFileDialog;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use crate::utils::lock_error_handler;
 
 fn get_config_path() -> Result<PathBuf> {
     let pd = ProjectDirs::from("com", "Patterson", "Linux Controller Mapper").ok_or(anyhow!("Failed to determine HOME directory on your OS"))?;
@@ -26,31 +27,43 @@ pub struct ProfileConfig {
 }
 
 impl ProfileConfig {
-    pub fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Self> {
-        let config_path_buf = get_config_path()?;
-        let config_path = config_path_buf.as_path();
-        let mut profile_config: ProfileConfig;
+    pub fn new(gilrs: Arc<Mutex<Gilrs>>) -> Result<Self> {
+        let mut profile_config: ProfileConfig = Self {
+            gamepad_configs: Vec::new(),
+        };
 
-        if !config_path.exists() {
-            profile_config = Self {
-                gamepad_configs: Vec::new(),
-            }
-        } else {
-            let data_string = fs::read_to_string(config_path)?;
-            profile_config = serde_json::from_str(&*data_string)?;
-        }
-
-        // Add any missing gamepads as empty configs
-        for (_, gamepad) in gilrs.lock().unwrap().gamepads() {
-            let gc_search_result = profile_config.gamepad_configs.iter().find(|gc| {
-                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
-            });
-            if gc_search_result.is_none() {
-                profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
-            }
+        // Add all connected gamepads as empty configs
+        for (_, gamepad) in gilrs.lock().map_err(lock_error_handler)?.gamepads() {
+            profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
         }
 
         Ok(profile_config)
+    }
+
+    pub async fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Option<Self>> {
+        let file_handle_opt = AsyncFileDialog::new()
+            .add_filter("profile", &["lcm", "json"])
+            .set_directory("/")
+            .pick_file()
+            .await;
+
+        if let Some(file_handle) = file_handle_opt {
+            let data_string = fs::read_to_string(file_handle.path())?;
+            let mut profile_config: ProfileConfig = serde_json::from_str(&*data_string)?;
+
+            // Add any missing gamepads as empty configs
+            for (_, gamepad) in gilrs.lock().map_err(lock_error_handler)?.gamepads() {
+                let gc_search_result = profile_config.gamepad_configs.iter().any(|gc| {
+                    Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
+                });
+                if !gc_search_result {
+                    profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
+                }
+            }
+
+            return Ok(Some(profile_config));
+        }
+        Ok(None)
     }
 
     pub fn insert_key_to_all(&mut self, btn: Button, key: keyboard::Key) {
@@ -67,16 +80,17 @@ impl ProfileConfig {
         }
     }
 
-    pub fn save(&self) -> Result<()> {
-        let config_path_buf = get_config_path()?;
-        let config_path = config_path_buf.as_path();
-        if !config_path.exists() {
-            let prefix = config_path.parent().ok_or(anyhow!("Config path prefix not defined. This should never happen if the directories library is working."))?;
-            if !prefix.exists() {
-                create_dir_all(prefix)?;
-            }
+    pub async fn save(&self) -> Result<()> {
+        let file_handle_opt = AsyncFileDialog::new()
+            .add_filter("profile", &["lcm", "json"])
+            .set_directory("/")
+            .save_file()
+            .await;
+
+        if let Some(file_handle) = file_handle_opt {
+            fs::write(file_handle.path(), serde_json::to_string_pretty(&self)?)?;
         }
-        fs::write(config_path, serde_json::to_string_pretty(&self)?)?;
+
         Ok(())
     }
 

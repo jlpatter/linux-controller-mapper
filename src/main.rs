@@ -1,5 +1,6 @@
 mod ui;
 mod backend;
+mod utils;
 
 use crate::ui::application::Application;
 

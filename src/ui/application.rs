@@ -40,7 +40,7 @@ impl Application {
             Self {
                 gilrs: gilrs.clone(),
                 current_btn_to_bind: None,
-                profile_config: Arc::new(Mutex::new(ProfileConfig::load(gilrs.clone()).unwrap())),
+                profile_config: Arc::new(Mutex::new(ProfileConfig::new(gilrs.clone()).unwrap())),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
             },
@@ -130,7 +130,7 @@ impl Application {
                 let mut profile_config = self.profile_config.lock().unwrap();
                 profile_config.unset_key_to_all(btn);
                 Task::none()
-            }
+            },
         }
     }
 
