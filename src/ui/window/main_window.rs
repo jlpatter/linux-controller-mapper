@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use enigo::Key::Unicode;
 use gilrs::{Button, Gilrs};
 use iced::{Color, Element, Length};
@@ -9,13 +10,15 @@ use crate::ui::window::utils::header;
 use crate::ui::window::base::{Window, WindowType};
 
 pub struct MainWindow {
-    profile_config: Arc<Mutex<ProfileConfig>>
+    profile_config: Arc<Mutex<ProfileConfig>>,
+    is_handler_running: Arc<AtomicBool>,
 }
 
 impl MainWindow {
-    pub fn new(profile_config: Arc<Mutex<ProfileConfig>>) -> Self {
+    pub fn new(profile_config: Arc<Mutex<ProfileConfig>>, is_handler_running: Arc<AtomicBool>) -> Self {
         Self {
-            profile_config
+            profile_config,
+            is_handler_running,
         }
     }
 
@@ -54,6 +57,11 @@ impl Window for MainWindow {
 
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
+        let handler_text = if self.is_handler_running.load(Ordering::Relaxed) {
+            text("Controller Active!").color(Color::from_rgb8(0, 150, 0))
+        } else {
+            text("Controller Inactive")
+        };
 
         column![
             scrollable(column![
@@ -88,7 +96,7 @@ impl Window for MainWindow {
                 MainWindow::button_mapper_row("C Button", Button::C, single_active_gamepad_config),
                 MainWindow::button_mapper_row("Z Button", Button::Z, single_active_gamepad_config),
             ].spacing(5)).height(Length::Fill),
-            row![container(activate).padding([0, 10]), deactivate],
+            row![activate, deactivate, handler_text].spacing(10),
         ].spacing(5).height(Length::Fill).into()
     }
 }

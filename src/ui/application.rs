@@ -96,7 +96,7 @@ impl Application {
             },
             Message::WindowOpened(id, window_type) => {
                 if window_type == WindowType::Main {
-                    self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone())));
+                    self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone(), self.is_handler_running.clone())));
                 } else if window_type == WindowType::KeyPress {
                     self.windows.insert(id, Box::new(KeyPressWindow{}));
                 }
