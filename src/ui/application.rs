@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::backend::controller_handler::handle_controller_input;
 use crate::ui::window::key_press_window::KeyPressWindow;
-use crate::ui::window::base::Window;
+use crate::ui::window::base::{Window, WindowType};
 use crate::ui::window::main_window::MainWindow;
 
 #[derive(Clone, Debug)]
@@ -67,8 +67,7 @@ impl Application {
     }
 
     fn is_key_press_window_open(&self) -> bool {
-        // I wonder if there'd be a less-hacky way to do this...
-        self.windows.len() > 1
+        self.windows.values().any(|window| window.window_type() == WindowType::KeyPress)
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -168,7 +167,7 @@ impl Application {
 
     pub fn view(&self, window_id: Id) -> Element<'_, Message> {
         if let Some(window) = self.windows.get(&window_id) {
-            return window.view(window_id, self.get_active_gamepad_config_map());
+            return window.view(self.get_active_gamepad_config_map());
         }
         text("Error: window_id Not Found, could not load view!").into()
     }

@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use enigo::Key::Unicode;
 use gilrs::{Button, GamepadId};
 use iced::{Color, Element, Length};
-use iced::widget::{button, container, row, scrollable, text, Row};
-use iced::window::Id;
+use iced::widget::{button, column, container, row, scrollable, text, Row};
 use crate::backend::config_manager::GamepadConfig;
 use crate::ui::application::{Message};
 use crate::ui::window::utils::header;
-use crate::ui::window::base::Window;
+use crate::ui::window::base::{Window, WindowType};
 
 pub struct MainWindow;
 
@@ -36,14 +35,18 @@ impl MainWindow {
 }
 
 impl Window for MainWindow {
-    fn view(&self, _window_id: Id, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message> {
+    fn window_type(&self) -> WindowType {
+        WindowType::Main
+    }
+
+    fn view(&self, active_gamepad_config_map: HashMap<GamepadId, GamepadConfig>) -> Element<'_, Message> {
         // TODO: Add a dropdown to support multiple gamepads!
         let single_active_gamepad_config = active_gamepad_config_map.values().next().unwrap();
 
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);
 
-        scrollable(iced::widget::column![
+        scrollable(column![
             header("Menu Pad"),
             MainWindow::button_mapper_row("Start", Button::Start, single_active_gamepad_config),
             MainWindow::button_mapper_row("Select", Button::Select, single_active_gamepad_config),
