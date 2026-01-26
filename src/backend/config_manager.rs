@@ -5,14 +5,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use directories::{BaseDirs, ProjectDirs};
 use enigo::Key;
-use gilrs::{Axis, Button, Gamepad, GamepadId, Gilrs};
+use gilrs::{Axis, Button, GamepadId, Gilrs};
 use iced::keyboard;
 use iced::keyboard::Key::{Character};
 use iced::keyboard::key::Named;
 use rfd::FileDialog;
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use crate::utils::lock_error_handler;
 
 fn get_config_path() -> Result<PathBuf> {
     let pd = ProjectDirs::from("com", "Patterson", "Linux Controller Mapper").ok_or(anyhow!("Failed to determine HOME directory on your OS"))?;
@@ -26,21 +24,16 @@ pub struct ProfileConfig {
     gamepad_configs: Vec<GamepadConfig>,
 }
 
-impl ProfileConfig {
-    pub fn new(gilrs: Arc<Mutex<Gilrs>>) -> Result<Self> {
-        let mut profile_config: ProfileConfig = Self {
-            gamepad_configs: Vec::new(),
-        };
-
-        // Add all connected gamepads as empty configs
-        for (_, gamepad) in gilrs.lock().map_err(lock_error_handler)?.gamepads() {
-            profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
+impl Default for ProfileConfig {
+    fn default() -> Self {
+        Self {
+            gamepad_configs: vec![GamepadConfig::default()],
         }
-
-        Ok(profile_config)
     }
+}
 
-    pub fn load(gilrs: Arc<Mutex<Gilrs>>) -> Result<Option<Self>> {
+impl ProfileConfig {
+    pub fn load() -> Result<Option<Self>> {
         let file_path_opt = FileDialog::new()
             .add_filter("profile", &["lcm", "json"])
             .set_directory(BaseDirs::new().ok_or(anyhow!("ERROR: Home directory not found!"))?.home_dir())
@@ -48,19 +41,7 @@ impl ProfileConfig {
 
         if let Some(file_path) = file_path_opt {
             let data_string = fs::read_to_string(file_path)?;
-            let mut profile_config: ProfileConfig = serde_json::from_str(&*data_string)?;
-
-            // Add any missing gamepads as empty configs
-            for (_, gamepad) in gilrs.lock().map_err(lock_error_handler)?.gamepads() {
-                let gc_search_result = profile_config.gamepad_configs.iter().any(|gc| {
-                    Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
-                });
-                if !gc_search_result {
-                    profile_config.gamepad_configs.push(GamepadConfig::new(&gamepad));
-                }
-            }
-
-            return Ok(Some(profile_config));
+            return Ok(Some(serde_json::from_str(&*data_string)?));
         }
         Ok(None)
     }
@@ -92,15 +73,21 @@ impl ProfileConfig {
         Ok(())
     }
 
-    pub fn get_gamepad_config_map(&self, gilrs: Arc<Mutex<Gilrs>>) -> HashMap<GamepadId, GamepadConfig> {
+    pub fn get_first_gamepad_config(&self) -> &GamepadConfig {
+        // TODO: This function is temporary until proper multi-controller support is implemented!
+        &self.gamepad_configs[0]
+    }
+
+    pub fn get_gamepad_config_map(&self, gilrs_arc: Arc<Mutex<Gilrs>>) -> HashMap<GamepadId, GamepadConfig> {
         // The reason we can't store this HashMap directly is that GamepadId is not static between runs.
         let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
 
-        for (gamepad_id, gamepad) in gilrs.lock().unwrap().gamepads() {
-            let gc_search_result = self.gamepad_configs.iter().find(|gc| {
-                Uuid::from_bytes(gamepad.uuid()) == *gc.uuid()
-            });
-            if let Some(gc) = gc_search_result {
+        let gilrs = gilrs_arc.lock().unwrap();
+        let mut connected_gamepad_iter = gilrs.gamepads();
+
+        // TODO: Need to come up with a better way to assign gamepads to configs!
+        for gc in &self.gamepad_configs {
+            if let Some((gamepad_id, _)) = connected_gamepad_iter.next() {
                 gamepad_config_map.insert(gamepad_id, gc.clone());
             }
         }
@@ -129,24 +116,13 @@ fn get_enigo_key_from_iced_key(key: keyboard::Key) -> Option<Key> {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GamepadConfig {
-    controller_name: String,
-    controller_uuid: Uuid,
     button_map: HashMap<Button, Key>,
     axis_map: HashMap<Axis, String>,
 }
 
 impl GamepadConfig {
-    pub fn new(gamepad: &Gamepad) -> Self {
-        Self {
-            controller_name: gamepad.name().to_string(),
-            controller_uuid: Uuid::from_bytes(gamepad.uuid()),
-            button_map: HashMap::new(),
-            axis_map: HashMap::new(),
-        }
-    }
-
     pub fn insert_key(&mut self, btn: Button, key: keyboard::Key) {
         if let Some(k) = get_enigo_key_from_iced_key(key) {
             self.button_map.insert(btn, k);
@@ -159,9 +135,5 @@ impl GamepadConfig {
 
     pub fn get_key(&self, btn: &Button) -> Option<&Key> {
         self.button_map.get(btn)
-    }
-
-    pub fn uuid(&self) -> &Uuid {
-        &self.controller_uuid
     }
 }

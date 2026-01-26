@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use gilrs::{Button, Gilrs};
+use gilrs::Button;
 use iced::{Color, Element, Length};
 use iced::widget::{button, column, row, scrollable, text};
 use crate::backend::config_manager::ProfileConfig;
@@ -27,10 +27,10 @@ impl Window for MainWindow {
         WindowType::Main
     }
 
-    fn view(&self, gilrs: Arc<Mutex<Gilrs>>) -> Element<'_, Message> {
-        let active_gamepad_config_map = self.profile_config.lock().unwrap().get_gamepad_config_map(gilrs);
+    fn view(&self) -> Element<'_, Message> {
+        let profile_config = self.profile_config.lock().unwrap();
         // TODO: Add a dropdown to support multiple gamepads!
-        let single_active_gamepad_config = active_gamepad_config_map.values().next().unwrap();
+        let single_active_gamepad_config = profile_config.get_first_gamepad_config();
 
         let activate = button("Activate").on_press(Message::Activate);
         let deactivate = button("Deactivate").on_press(Message::Deactivate);

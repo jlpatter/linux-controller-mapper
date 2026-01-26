@@ -45,7 +45,7 @@ impl Application {
             Self {
                 gilrs: gilrs.clone(),
                 current_btn_to_bind: None,
-                profile_config: Arc::new(Mutex::new(ProfileConfig::new(gilrs.clone()).unwrap())),
+                profile_config: Arc::new(Mutex::new(ProfileConfig::default())),
                 windows: BTreeMap::new(),
                 is_handler_running: Arc::new(AtomicBool::new(false)),
                 current_error: String::new(),
@@ -160,7 +160,7 @@ impl Application {
                 Task::none()
             },
             Message::LoadProfile => {
-                let loaded_profile_config_opt = ProfileConfig::load(self.gilrs.clone()).unwrap();
+                let loaded_profile_config_opt = ProfileConfig::load().unwrap();
                 if let Some(loaded_profile_config) = loaded_profile_config_opt {
                     let mut current_profile_config = self.profile_config.lock().unwrap();
                     *current_profile_config = loaded_profile_config;
@@ -191,7 +191,7 @@ impl Application {
 
     pub fn view(&self, window_id: Id) -> Element<'_, Message> {
         if let Some(window) = self.windows.get(&window_id) {
-            return window.view(self.gilrs.clone());
+            return window.view();
         }
         text("Error: window_id Not Found, could not load view!").into()
     }

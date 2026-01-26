@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-use gilrs::Gilrs;
 use iced::Element;
 use iced::widget::text;
 use crate::ui::application::Message;
@@ -22,7 +20,7 @@ impl Window for ErrorWindow {
         WindowType::Error
     }
 
-    fn view(&self, _gilrs: Arc<Mutex<Gilrs>>) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         text(format!("The following error has occurred: {}", self.error)).into()
     }
 }

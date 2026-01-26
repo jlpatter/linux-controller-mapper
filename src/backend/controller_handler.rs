@@ -23,8 +23,7 @@ pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, profile_config: A
     while is_handler_running.load(Ordering::Relaxed) == true {
         // Examine new events
         while let Some(Event { id, event, .. }) = gilrs.lock().map_err(lock_error_handler_string)?.next_event() {
-            // TODO: Handle when Gilrs find a new GamepadId that's missing from the map!
-            let agc = active_gamepad_config_map.get(&id).unwrap();
+            let agc = active_gamepad_config_map.get(&id).ok_or("ERROR: Gamepad config couldn't be mapped to a Gamepad!")?;
 
             match event {
                 ButtonPressed(btn, _) => {
