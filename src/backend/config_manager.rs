@@ -77,6 +77,17 @@ impl ProfileConfig {
         &self.gamepad_configs[0]
     }
 
+    pub fn get_gamepad_config(&self, index: usize) -> Option<GamepadConfig> {
+        if let Some(gc) = self.gamepad_configs.get(index) {
+            return Some(gc.clone());
+        }
+        None
+    }
+
+    pub fn get_gamepad_config_len(&self) -> usize {
+        self.gamepad_configs.len()
+    }
+
     pub fn get_gamepad_config_map(&self, gilrs: &Gilrs) -> HashMap<GamepadId, GamepadConfig> {
         // The reason we can't store this HashMap directly is that GamepadId is not static between runs.
         let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();

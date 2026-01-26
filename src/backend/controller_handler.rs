@@ -1,10 +1,11 @@
+use std::collections::hash_map::Entry;
 use anyhow::Result;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};
 use gilrs::{Axis, Event, Gilrs};
 use gilrs::EventType::{AxisChanged, ButtonPressed, ButtonReleased};
-use crate::backend::config_manager::ProfileConfig;
+use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
 use crate::utils::lock_error_handler_string;
 
 const DEADZONE: f32 = 0.05;
@@ -13,7 +14,8 @@ const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 pub async fn handle_controller_input(profile_config: Arc<Mutex<ProfileConfig>>, is_handler_running: Arc<AtomicBool>) -> Result<(), String> {
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
     let mut gilrs = Gilrs::new().map_err(|e| e.to_string())?;
-    let active_gamepad_config_map = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config_map(&gilrs);
+    let mut active_gamepad_config_map = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config_map(&gilrs);
+    let mut last_config_index = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config_len() - 1;
 
     let (mouse_x_pix, mouse_y_pix) = enigo.location().unwrap_or((0, 0));
     let mut mouse_x_pos = mouse_x_pix as f32;
@@ -24,7 +26,15 @@ pub async fn handle_controller_input(profile_config: Arc<Mutex<ProfileConfig>>, 
     while is_handler_running.load(Ordering::Relaxed) == true {
         // Examine new events
         while let Some(Event { id, event, .. }) = gilrs.next_event() {
-            let agc = active_gamepad_config_map.get(&id).ok_or("ERROR: Gamepad config couldn't be mapped to a Gamepad!")?;
+            let agc = match active_gamepad_config_map.entry(id) {
+                Entry::Occupied(e) => Ok::<&mut GamepadConfig, String>(e.into_mut()),
+                Entry::Vacant(e) => {
+                    // This is to resolve an issue if a gamepad is plugged in AFTER the handler's been activated.
+                    let gc = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config(last_config_index).ok_or("ERROR: Gamepad config couldn't be mapped to a Gamepad! Gamepad config doesn't exist.")?;
+                    last_config_index += 1;
+                    Ok(e.insert(gc))
+                }
+            }?;
 
             match event {
                 ButtonPressed(btn, _) => {
