@@ -1,7 +1,7 @@
-use iced::Element;
-use iced::widget::{row, text};
 use crate::ui::application::Message;
 use crate::ui::window::base::{Window, WindowType};
+use iced::Element;
+use iced::widget::{row, text};
 
 pub struct KeyPressWindow;
 

@@ -1,17 +1,15 @@
-use iced::Element;
-use iced::widget::text;
 use crate::ui::application::Message;
 use crate::ui::window::base::{Window, WindowType};
+use iced::Element;
+use iced::widget::text;
 
 pub struct ErrorWindow {
-    error: String
+    error: String,
 }
 
 impl ErrorWindow {
     pub fn new(error: String) -> Self {
-        Self {
-            error
-        }
+        Self { error }
     }
 }
 

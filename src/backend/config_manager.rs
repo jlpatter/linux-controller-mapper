@@ -1,18 +1,19 @@
-use anyhow::{anyhow, Result};
-use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use anyhow::{Result, anyhow};
 use directories::{BaseDirs, ProjectDirs};
 use enigo::Key;
 use gilrs::{Axis, Button, GamepadId, Gilrs};
 use iced::keyboard;
-use iced::keyboard::Key::{Character};
+use iced::keyboard::Key::Character;
 use iced::keyboard::key::Named;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 
 fn get_config_path() -> Result<PathBuf> {
-    let pd = ProjectDirs::from("com", "Patterson", "Linux Controller Mapper").ok_or(anyhow!("Failed to determine HOME directory on your OS"))?;
+    let pd = ProjectDirs::from("com", "Patterson", "Linux Controller Mapper")
+        .ok_or(anyhow!("Failed to determine HOME directory on your OS"))?;
     let mut config_path_buf = pd.config_dir().to_path_buf();
     config_path_buf.push(PathBuf::from("config.json"));
     Ok(config_path_buf)
@@ -35,7 +36,11 @@ impl ProfileConfig {
     pub fn load() -> Result<Option<Self>> {
         let file_path_opt = FileDialog::new()
             .add_filter("profile", &["lcm", "json"])
-            .set_directory(BaseDirs::new().ok_or(anyhow!("ERROR: Home directory not found!"))?.home_dir())
+            .set_directory(
+                BaseDirs::new()
+                    .ok_or(anyhow!("ERROR: Home directory not found!"))?
+                    .home_dir(),
+            )
             .pick_file();
 
         if let Some(file_path) = file_path_opt {
@@ -62,7 +67,11 @@ impl ProfileConfig {
     pub fn save(&self) -> Result<()> {
         let file_path_opt = FileDialog::new()
             .add_filter("profile", &["lcm", "json"])
-            .set_directory(BaseDirs::new().ok_or(anyhow!("ERROR: Home directory not found!"))?.home_dir())
+            .set_directory(
+                BaseDirs::new()
+                    .ok_or(anyhow!("ERROR: Home directory not found!"))?
+                    .home_dir(),
+            )
             .save_file();
 
         if let Some(file_path) = file_path_opt {

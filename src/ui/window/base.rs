@@ -1,11 +1,11 @@
-use iced::Element;
 use crate::ui::application::Message;
+use iced::Element;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum WindowType {
     Main,
     KeyPress,
-    Error
+    Error,
 }
 
 pub trait Window {
