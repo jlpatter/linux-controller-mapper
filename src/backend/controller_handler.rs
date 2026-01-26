@@ -26,21 +26,26 @@ pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, profile_config: A
             // TODO: Handle when Gilrs find a new GamepadId that's missing from the map!
             let agc = active_gamepad_config_map.get(&id).unwrap();
 
-            if let ButtonPressed(btn, _) = event {
-                if let Some(key) = agc.get_key(&btn) {
-                    enigo.key(*key, Direction::Press).map_err(|e| e.to_string())?;
+            match event {
+                ButtonPressed(btn, _) => {
+                    if let Some(key) = agc.get_key(&btn) {
+                        enigo.key(*key, Direction::Press).map_err(|e| e.to_string())?;
+                    }
                 }
-            } else if let ButtonReleased(btn, _) = event {
-                if let Some(key) = agc.get_key(&btn) {
-                    enigo.key(*key, Direction::Release).map_err(|e| e.to_string())?;
+                ButtonReleased(btn, _) => {
+                    if let Some(key) = agc.get_key(&btn) {
+                        enigo.key(*key, Direction::Release).map_err(|e| e.to_string())?;
+                    }
                 }
-            } else if let AxisChanged(axis, amt, _) = event {
-                if axis == Axis::LeftStickX {
-                    mouse_x_amt = if amt.abs() > DEADZONE {amt * MOUSE_SPEED_MODIFIER} else {0.0};
-                } else if axis == Axis::LeftStickY {
-                    mouse_y_amt = if amt.abs() > DEADZONE {-amt * MOUSE_SPEED_MODIFIER} else {0.0};
+                AxisChanged(axis, amt, _) => {
+                    if axis == Axis::LeftStickX {
+                        mouse_x_amt = if amt.abs() > DEADZONE {amt * MOUSE_SPEED_MODIFIER} else {0.0};
+                    } else if axis == Axis::LeftStickY {
+                        mouse_y_amt = if amt.abs() > DEADZONE {-amt * MOUSE_SPEED_MODIFIER} else {0.0};
+                    }
                 }
-            }
+                _ => {}
+            };
         }
 
         if mouse_x_amt.abs() > 0.0 || mouse_y_amt.abs() > 0.0 {

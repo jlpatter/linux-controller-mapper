@@ -112,13 +112,17 @@ impl Application {
                     .map(|id| Message::WindowOpened(id, WindowType::KeyPress))
             },
             Message::WindowOpened(id, window_type) => {
-                if window_type == WindowType::Main {
-                    self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone(), self.is_handler_running.clone())));
-                } else if window_type == WindowType::KeyPress {
-                    self.windows.insert(id, Box::new(KeyPressWindow{}));
-                } else if window_type == WindowType::Error {
-                    self.windows.insert(id, Box::new(ErrorWindow::new(self.current_error.clone())));
-                }
+                match window_type {
+                    WindowType::Main => {
+                        self.windows.insert(id, Box::new(MainWindow::new(self.profile_config.clone(), self.is_handler_running.clone())));
+                    }
+                    WindowType::KeyPress => {
+                        self.windows.insert(id, Box::new(KeyPressWindow{}));
+                    }
+                    WindowType::Error => {
+                        self.windows.insert(id, Box::new(ErrorWindow::new(self.current_error.clone())));
+                    }
+                };
 
                 Task::none()
             },
