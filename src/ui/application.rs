@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use gilrs::{Button, Gilrs};
+use gilrs::Button;
 use iced::{keyboard, window, Element, Event, Size, Subscription, Task, Vector};
 use iced::widget::{text};
 use iced::window::{Id, Settings};
@@ -28,7 +28,6 @@ pub enum Message {
 }
 
 pub struct Application {
-    gilrs: Arc<Mutex<Gilrs>>,
     current_btn_to_bind: Option<Button>,
     profile_config: Arc<Mutex<ProfileConfig>>,
     windows: BTreeMap<Id, Box<dyn Window>>,
@@ -39,11 +38,9 @@ pub struct Application {
 impl Application {
     pub fn new() -> (Self, Task<Message>) {
         let (_, open) = window::open(Settings::default());
-        let gilrs = Arc::new(Mutex::new(Gilrs::new().unwrap()));
 
         (
             Self {
-                gilrs: gilrs.clone(),
                 current_btn_to_bind: None,
                 profile_config: Arc::new(Mutex::new(ProfileConfig::default())),
                 windows: BTreeMap::new(),
@@ -72,7 +69,7 @@ impl Application {
             Message::Activate => Task::perform(
                 {
                     self.is_handler_running.store(true, Ordering::Relaxed);
-                    handle_controller_input(self.gilrs.clone(), self.profile_config.clone(), self.is_handler_running.clone())
+                    handle_controller_input(self.profile_config.clone(), self.is_handler_running.clone())
                 },
                 Message::Activated,
             ),

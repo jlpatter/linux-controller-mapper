@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use directories::{BaseDirs, ProjectDirs};
 use enigo::Key;
 use gilrs::{Axis, Button, GamepadId, Gilrs};
@@ -78,14 +77,12 @@ impl ProfileConfig {
         &self.gamepad_configs[0]
     }
 
-    pub fn get_gamepad_config_map(&self, gilrs_arc: Arc<Mutex<Gilrs>>) -> HashMap<GamepadId, GamepadConfig> {
+    pub fn get_gamepad_config_map(&self, gilrs: &Gilrs) -> HashMap<GamepadId, GamepadConfig> {
         // The reason we can't store this HashMap directly is that GamepadId is not static between runs.
         let mut gamepad_config_map: HashMap<GamepadId, GamepadConfig> = HashMap::new();
 
-        let gilrs = gilrs_arc.lock().unwrap();
-        let mut connected_gamepad_iter = gilrs.gamepads();
-
         // TODO: Need to come up with a better way to assign gamepads to configs!
+        let mut connected_gamepad_iter = gilrs.gamepads();
         for gc in &self.gamepad_configs {
             if let Some((gamepad_id, _)) = connected_gamepad_iter.next() {
                 gamepad_config_map.insert(gamepad_id, gc.clone());

@@ -10,9 +10,10 @@ use crate::utils::lock_error_handler_string;
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
 
-pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, profile_config: Arc<Mutex<ProfileConfig>>, is_handler_running: Arc<AtomicBool>) -> Result<(), String> {
+pub async fn handle_controller_input(profile_config: Arc<Mutex<ProfileConfig>>, is_handler_running: Arc<AtomicBool>) -> Result<(), String> {
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
-    let active_gamepad_config_map = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config_map(gilrs.clone());
+    let mut gilrs = Gilrs::new().map_err(|e| e.to_string())?;
+    let active_gamepad_config_map = profile_config.lock().map_err(lock_error_handler_string)?.get_gamepad_config_map(&gilrs);
 
     let (mouse_x_pix, mouse_y_pix) = enigo.location().unwrap_or((0, 0));
     let mut mouse_x_pos = mouse_x_pix as f32;
@@ -22,7 +23,7 @@ pub async fn handle_controller_input(gilrs: Arc<Mutex<Gilrs>>, profile_config: A
 
     while is_handler_running.load(Ordering::Relaxed) == true {
         // Examine new events
-        while let Some(Event { id, event, .. }) = gilrs.lock().map_err(lock_error_handler_string)?.next_event() {
+        while let Some(Event { id, event, .. }) = gilrs.next_event() {
             let agc = active_gamepad_config_map.get(&id).ok_or("ERROR: Gamepad config couldn't be mapped to a Gamepad!")?;
 
             match event {
