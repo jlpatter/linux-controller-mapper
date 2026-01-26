@@ -55,13 +55,10 @@ impl Application {
         self.windows.values().any(|window| window.window_type() == WindowType::KeyPress)
     }
 
-    fn handle_error(&mut self, result: Result<(), String>) -> Task<Message> {
-        if let Err(e) = result {
-            self.current_error = e;
-            let (_, open_task) = window::open(Settings::default());
-            return open_task.map(|id| Message::WindowOpened(id, WindowType::Error));
-        }
-        Task::none()
+    fn handle_error(&mut self, err: String) -> Task<Message> {
+        self.current_error = err;
+        let (_, open_task) = window::open(Settings::default());
+        open_task.map(|id| Message::WindowOpened(id, WindowType::Error))
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -74,7 +71,11 @@ impl Application {
                 Message::Activated,
             ),
             Message::Activated(result) => {
-                self.handle_error(result)
+                if let Err(e) = result {
+                    self.is_handler_running.store(false, Ordering::Relaxed);
+                    return self.handle_error(e);
+                }
+                Task::none()
             },
             Message::Deactivate => {
                 self.is_handler_running.store(false, Ordering::Relaxed);
