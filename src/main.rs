@@ -5,12 +5,9 @@ mod utils;
 use crate::ui::application::Application;
 
 fn main() {
-    iced::daemon(
-        "Linux Controller Mapper",
-        Application::update,
-        Application::view,
-    )
-    .subscription(Application::subscription)
-    .run_with(Application::new)
-    .unwrap();
+    iced::daemon(Application::new, Application::update, Application::view)
+        .title("Linux Controller Mapper")
+        .subscription(Application::subscription)
+        .run()
+        .unwrap();
 }

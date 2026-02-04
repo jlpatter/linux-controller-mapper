@@ -93,7 +93,7 @@ impl Application {
 
                 self.current_btn_to_bind = Some(btn);
 
-                window::get_position(*last_window)
+                window::position(*last_window)
                     .then(|last_position| {
                         let position =
                             last_position.map_or(window::Position::Default, |last_position| {
