@@ -1,4 +1,5 @@
-use crate::backend::config_manager::{GamepadConfig, MouseButtonOrKey, ProfileConfig};
+use crate::backend::config_manager::{GamepadConfig, ProfileConfig};
+use crate::backend::key_utils::MouseButtonOrKey;
 use crate::utils::lock_error_handler_string;
 use anyhow::Result;
 use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};

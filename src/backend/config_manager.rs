@@ -1,10 +1,8 @@
+use crate::backend::key_utils::{MouseButtonOrKey, get_enigo_key_from_iced_key};
 use anyhow::{Result, anyhow};
 use directories::BaseDirs;
-use enigo::{Button as MouseButton, Key};
 use gilrs::{Axis, Button, GamepadId, Gilrs};
 use iced::keyboard::Key as IcedKey;
-use iced::keyboard::Key::Character;
-use iced::keyboard::key::Named;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -91,32 +89,6 @@ impl ProfileConfig {
 
         gamepad_config_map
     }
-}
-
-fn get_enigo_key_from_iced_key(key: IcedKey) -> Option<Key> {
-    if let Character(c) = key {
-        Some(Key::Unicode(c.chars().next()?))
-    } else if let IcedKey::Named(named) = key {
-        let named_chars_map: HashMap<Named, Key> = HashMap::from([
-            (Named::Control, Key::Control),
-            (Named::Alt, Key::Alt),
-            (Named::Shift, Key::Shift),
-            (Named::Tab, Key::Tab),
-            (Named::Escape, Key::Escape),
-            (Named::Meta, Key::Meta),
-            (Named::Backspace, Key::Backspace),
-        ]);
-
-        Some(*named_chars_map.get(&named)?)
-    } else {
-        None
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum MouseButtonOrKey {
-    MouseButton(MouseButton),
-    Key(Key),
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
