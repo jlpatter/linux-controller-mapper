@@ -5,6 +5,7 @@ use crate::ui::window::error_window::ErrorWindow;
 use crate::ui::window::key_press_window::KeyPressWindow;
 use crate::ui::window::main_window::MainWindow;
 use anyhow::Result;
+use enigo::Button as MouseButton;
 use gilrs::Button;
 use iced::widget::text;
 use iced::window::{Id, Settings};
@@ -22,6 +23,7 @@ pub enum Message {
     WindowOpened(Id, WindowType),
     WindowClosed(Id),
     KeyPressed(keyboard::Key),
+    MouseButtonSet(Button, MouseButton),
     UnsetButton(Button),
     SaveProfile,
     LoadProfile,
@@ -154,6 +156,12 @@ impl Application {
                         return window::close(*id);
                     }
                 }
+                Task::none()
+            }
+            Message::MouseButtonSet(btn, mb) => {
+                let mut profile_config = self.profile_config.lock().unwrap();
+                profile_config.insert_mouse_button_to_all(btn, mb);
+
                 Task::none()
             }
             Message::UnsetButton(btn) => {

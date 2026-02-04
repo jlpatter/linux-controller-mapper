@@ -1,6 +1,7 @@
 use crate::backend::key_utils::{MouseButtonOrKey, get_enigo_key_from_iced_key};
 use anyhow::{Result, anyhow};
 use directories::BaseDirs;
+use enigo::Button as MouseButton;
 use gilrs::{Axis, Button, GamepadId, Gilrs};
 use iced::keyboard::Key as IcedKey;
 use rfd::FileDialog;
@@ -43,6 +44,13 @@ impl ProfileConfig {
         // TODO: This function is temporary until proper multi-controller support is implemented!
         for gc in &mut self.gamepad_configs {
             gc.insert_key(btn.clone(), key.clone());
+        }
+    }
+
+    pub fn insert_mouse_button_to_all(&mut self, btn: Button, mb: MouseButton) {
+        // TODO: This function is temporary until proper multi-controller support is implemented!
+        for gc in &mut self.gamepad_configs {
+            gc.insert_mouse_button(btn.clone(), mb.clone());
         }
     }
 
@@ -102,6 +110,11 @@ impl GamepadConfig {
         if let Some(k) = get_enigo_key_from_iced_key(key) {
             self.button_map.insert(btn, MouseButtonOrKey::Key(k));
         }
+    }
+
+    pub fn insert_mouse_button(&mut self, btn: Button, mb: MouseButton) {
+        self.button_map
+            .insert(btn, MouseButtonOrKey::MouseButton(mb));
     }
 
     pub fn remove_key(&mut self, btn: Button) {
