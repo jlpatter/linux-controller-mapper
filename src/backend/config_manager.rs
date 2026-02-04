@@ -1,23 +1,14 @@
 use anyhow::{Result, anyhow};
-use directories::{BaseDirs, ProjectDirs};
-use enigo::Key;
+use directories::BaseDirs;
+use enigo::{Button as MouseButton, Key};
 use gilrs::{Axis, Button, GamepadId, Gilrs};
-use iced::keyboard;
+use iced::keyboard::Key as IcedKey;
 use iced::keyboard::Key::Character;
 use iced::keyboard::key::Named;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
-
-fn get_config_path() -> Result<PathBuf> {
-    let pd = ProjectDirs::from("com", "Patterson", "Linux Controller Mapper")
-        .ok_or(anyhow!("Failed to determine HOME directory on your OS"))?;
-    let mut config_path_buf = pd.config_dir().to_path_buf();
-    config_path_buf.push(PathBuf::from("config.json"));
-    Ok(config_path_buf)
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct ProfileConfig {
@@ -50,7 +41,7 @@ impl ProfileConfig {
         Ok(None)
     }
 
-    pub fn insert_key_to_all(&mut self, btn: Button, key: keyboard::Key) {
+    pub fn insert_key_to_all(&mut self, btn: Button, key: IcedKey) {
         // TODO: This function is temporary until proper multi-controller support is implemented!
         for gc in &mut self.gamepad_configs {
             gc.insert_key(btn.clone(), key.clone());
@@ -102,10 +93,10 @@ impl ProfileConfig {
     }
 }
 
-fn get_enigo_key_from_iced_key(key: keyboard::Key) -> Option<Key> {
+fn get_enigo_key_from_iced_key(key: IcedKey) -> Option<Key> {
     if let Character(c) = key {
         Some(Key::Unicode(c.chars().next()?))
-    } else if let keyboard::Key::Named(named) = key {
+    } else if let IcedKey::Named(named) = key {
         let named_chars_map: HashMap<Named, Key> = HashMap::from([
             (Named::Control, Key::Control),
             (Named::Alt, Key::Alt),
@@ -122,16 +113,22 @@ fn get_enigo_key_from_iced_key(key: keyboard::Key) -> Option<Key> {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum MouseButtonOrKey {
+    MouseButton(MouseButton),
+    Key(Key),
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GamepadConfig {
-    button_map: HashMap<Button, Key>,
+    button_map: HashMap<Button, MouseButtonOrKey>,
     axis_map: HashMap<Axis, String>,
 }
 
 impl GamepadConfig {
-    pub fn insert_key(&mut self, btn: Button, key: keyboard::Key) {
+    pub fn insert_key(&mut self, btn: Button, key: IcedKey) {
         if let Some(k) = get_enigo_key_from_iced_key(key) {
-            self.button_map.insert(btn, k);
+            self.button_map.insert(btn, MouseButtonOrKey::Key(k));
         }
     }
 
@@ -139,7 +136,7 @@ impl GamepadConfig {
         self.button_map.remove(&btn);
     }
 
-    pub fn get_key(&self, btn: &Button) -> Option<&Key> {
+    pub fn get_key(&self, btn: &Button) -> Option<&MouseButtonOrKey> {
         self.button_map.get(btn)
     }
 }

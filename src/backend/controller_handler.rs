@@ -1,14 +1,30 @@
-use crate::backend::config_manager::ProfileConfig;
+use crate::backend::config_manager::{GamepadConfig, MouseButtonOrKey, ProfileConfig};
 use crate::utils::lock_error_handler_string;
 use anyhow::Result;
 use enigo::{Coordinate, Direction, Enigo, Keyboard, Mouse, Settings};
 use gilrs::EventType::{AxisChanged, ButtonPressed, ButtonReleased};
-use gilrs::{Axis, Event, Gilrs};
+use gilrs::{Axis, Button, Event, Gilrs};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 const DEADZONE: f32 = 0.05;
 const MOUSE_SPEED_MODIFIER: f32 = 0.5;
+
+fn perform_key_press(
+    enigo: &mut Enigo,
+    agc: &GamepadConfig,
+    btn: Button,
+    dir: Direction,
+) -> Result<(), String> {
+    if let Some(mb_key) = agc.get_key(&btn) {
+        if let MouseButtonOrKey::MouseButton(mb) = mb_key {
+            enigo.button(*mb, dir).map_err(|e| e.to_string())?;
+        } else if let MouseButtonOrKey::Key(key) = mb_key {
+            enigo.key(*key, dir).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
 
 pub async fn handle_controller_input(
     profile_config: Arc<Mutex<ProfileConfig>>,
@@ -36,18 +52,10 @@ pub async fn handle_controller_input(
 
             match event {
                 ButtonPressed(btn, _) => {
-                    if let Some(key) = agc.get_key(&btn) {
-                        enigo
-                            .key(*key, Direction::Press)
-                            .map_err(|e| e.to_string())?;
-                    }
+                    perform_key_press(&mut enigo, agc, btn, Direction::Press)?;
                 }
                 ButtonReleased(btn, _) => {
-                    if let Some(key) = agc.get_key(&btn) {
-                        enigo
-                            .key(*key, Direction::Release)
-                            .map_err(|e| e.to_string())?;
-                    }
+                    perform_key_press(&mut enigo, agc, btn, Direction::Release)?;
                 }
                 AxisChanged(axis, amt, _) => {
                     if axis == Axis::LeftStickX {
