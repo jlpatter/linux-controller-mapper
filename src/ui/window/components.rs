@@ -43,8 +43,8 @@ pub fn button_mapper_row<'b>(label: &'b str, btn: Button, gc: &GamepadConfig) ->
         text(label).color(Color::from_rgb8(255, 0, 0)),
         text(" is currently assigned to: ".to_string()),
         text(get_str_from_config(gc, &btn)).color(Color::from_rgb8(0, 0, 255)),
-        container(button("Set").on_press(Message::OpenKeySetWindow(btn))).padding([0, 10]),
-        container(button("Unset").on_press(Message::UnsetButton(btn))).padding([0, 10]),
+        container(button("Assign Key").on_press(Message::OpenKeySetWindow(btn))).padding([0, 10]),
+        container(button("Unassign").on_press(Message::UnsetButton(btn))).padding([0, 10]),
         pick_list(mouse_buttons, selected_mouse_button, move |mbw| {
             Message::MouseButtonSet(btn, mbw.0)
         })
