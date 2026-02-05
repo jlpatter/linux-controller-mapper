@@ -1,5 +1,6 @@
 use crate::backend::config_manager::ProfileConfig;
 use crate::backend::controller_handler::handle_controller_input;
+use crate::backend::joysticks::Joystick;
 use crate::ui::window::base::{Window, WindowType};
 use crate::ui::window::error_window::ErrorWindow;
 use crate::ui::window::key_press_window::KeyPressWindow;
@@ -19,6 +20,7 @@ pub enum Message {
     Activate,
     Activated(Result<(), String>),
     Deactivate,
+    ToggleAxisSelection(Joystick),
     OpenKeySetWindow(Button),
     WindowOpened(Id, WindowType),
     WindowClosed(Id),
@@ -86,6 +88,12 @@ impl Application {
             }
             Message::Deactivate => {
                 self.is_handler_running.store(false, Ordering::Relaxed);
+                Task::none()
+            }
+            Message::ToggleAxisSelection(js) => {
+                let mut profile_config = self.profile_config.lock().unwrap();
+                profile_config.toggle_axis_all(js);
+
                 Task::none()
             }
             Message::OpenKeySetWindow(btn) => {

@@ -1,7 +1,8 @@
 use crate::backend::config_manager::ProfileConfig;
+use crate::backend::joysticks::Joystick;
 use crate::ui::application::Message;
 use crate::ui::window::base::{Window, WindowType};
-use crate::ui::window::components::{button_mapper_row, header};
+use crate::ui::window::components::{button_mapper_row, header, joystick_row};
 use gilrs::Button;
 use iced::widget::{button, column, row, scrollable, text};
 use iced::{Color, Element, Length};
@@ -49,6 +50,17 @@ impl Window for MainWindow {
         column![
             scrollable(
                 column![
+                    header("Joystick Axes"),
+                    joystick_row(
+                        "Left Joystick",
+                        Joystick::Left,
+                        single_active_gamepad_config.use_left_stick_mouse
+                    ),
+                    joystick_row(
+                        "Right Joystick",
+                        Joystick::Right,
+                        single_active_gamepad_config.use_right_stick_mouse
+                    ),
                     header("Menu Pad"),
                     button_mapper_row("Start", Button::Start, single_active_gamepad_config),
                     button_mapper_row("Select", Button::Select, single_active_gamepad_config),

@@ -1,4 +1,5 @@
 use crate::backend::config_manager::GamepadConfig;
+use crate::backend::joysticks::Joystick;
 use crate::backend::key_utils::MouseButtonOrKey;
 use crate::ui::application::Message;
 use crate::ui::window::mouse_button_wrapper::MouseButtonWrapper;
@@ -9,6 +10,23 @@ use iced::{Color, Length};
 
 pub fn header<'a>(content: &'a str) -> Text<'a> {
     text(content).size(20)
+}
+
+pub fn joystick_row<'c>(label: &'c str, joystick: Joystick, is_in_use: bool) -> Row<'c, Message> {
+    let msg = if is_in_use {
+        "controlling the mouse. ✔️"
+    } else {
+        "NOT controlling the mouse. ❌️"
+    };
+
+    row![
+        text(label).color(Color::from_rgb8(255, 0, 0)),
+        text(" is currently "),
+        text(msg).color(Color::from_rgb8(0, 0, 255)),
+        container(button("Toggle").on_press(Message::ToggleAxisSelection(joystick)))
+            .padding([0, 10]),
+    ]
+    .width(Length::Fill)
 }
 
 fn get_str_from_config(gc: &GamepadConfig, gilrs_btn: &Button) -> String {

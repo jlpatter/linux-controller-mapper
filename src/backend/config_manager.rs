@@ -1,8 +1,9 @@
+use crate::backend::joysticks::Joystick;
 use crate::backend::key_utils::{MouseButtonOrKey, get_enigo_key_from_iced_key};
 use anyhow::{Result, anyhow};
 use directories::BaseDirs;
 use enigo::Button as MouseButton;
-use gilrs::{Axis, Button, GamepadId, Gilrs};
+use gilrs::{Button, GamepadId, Gilrs};
 use iced::keyboard::Key as IcedKey;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,19 @@ impl ProfileConfig {
             return Ok(Some(serde_json::from_str(&*data_string)?));
         }
         Ok(None)
+    }
+
+    pub fn toggle_axis_all(&mut self, joystick: Joystick) {
+        // TODO: This function is temporary until proper multi-controller support is implemented!
+        if joystick == Joystick::Left {
+            for gc in &mut self.gamepad_configs {
+                gc.use_left_stick_mouse = !gc.use_left_stick_mouse;
+            }
+        } else if joystick == Joystick::Right {
+            for gc in &mut self.gamepad_configs {
+                gc.use_right_stick_mouse = !gc.use_right_stick_mouse;
+            }
+        }
     }
 
     pub fn insert_key_to_all(&mut self, btn: Button, key: IcedKey) {
@@ -102,7 +116,8 @@ impl ProfileConfig {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GamepadConfig {
     button_map: HashMap<Button, MouseButtonOrKey>,
-    axis_map: HashMap<Axis, String>,
+    pub use_left_stick_mouse: bool,
+    pub use_right_stick_mouse: bool,
 }
 
 impl GamepadConfig {

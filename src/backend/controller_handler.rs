@@ -59,13 +59,17 @@ pub async fn handle_controller_input(
                     perform_key_press(&mut enigo, agc, btn, Direction::Release)?;
                 }
                 AxisChanged(axis, amt, _) => {
-                    if axis == Axis::LeftStickX {
+                    if (agc.use_left_stick_mouse && axis == Axis::LeftStickX)
+                        || (agc.use_right_stick_mouse && axis == Axis::RightStickX)
+                    {
                         mouse_x_amt = if amt.abs() > DEADZONE {
                             amt * MOUSE_SPEED_MODIFIER
                         } else {
                             0.0
                         };
-                    } else if axis == Axis::LeftStickY {
+                    } else if (agc.use_left_stick_mouse && axis == Axis::LeftStickY)
+                        || (agc.use_right_stick_mouse && axis == Axis::RightStickY)
+                    {
                         mouse_y_amt = if amt.abs() > DEADZONE {
                             -amt * MOUSE_SPEED_MODIFIER
                         } else {
